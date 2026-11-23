@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ads Identity player</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1b1f24; --muted:#5b6470; --line:#dde1e6;
+          --ok:#1a7f37; --bad:#c62828; --accent:#2457c5; --ad:#9a3412; --todo:#8a6d00; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:1100px; margin:0 auto; padding:20px 16px; display:grid; gap:16px; grid-template-columns:1fr; }
+  @media (min-width: 900px) { main { grid-template-columns: 1.2fr 1fr; } }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
+  video { width:100%; background:#000; border-radius:6px; }
+  .muted { color:var(--muted); font-size:13px; }
+  .sources { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .sources a { font-size:13px; padding:4px 10px; border:1px solid var(--line); border-radius:6px; color:var(--text); text-decoration:none; background:#fff; }
+  .sources a[aria-current=true] { background:var(--accent); color:#fff; border-color:var(--accent); }
+  form { display:flex; gap:6px; margin-top:8px; } form input { flex:1; min-width:0; font:inherit; font-size:13px; padding:4px 8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:4px 6px; border-top:1px solid var(--line); vertical-align:top; word-break:break-all; }
+  td:first-child { white-space:nowrap; color:var(--muted); width:1%; }
+  .ad { border-left:3px solid var(--ad); padding:8px 10px; margin:10px 0; background:#fdf3ee; }
+  .ad.error { border-color:var(--bad); background:#fdecec; }
+  .checks div { font-size:13px; margin-top:4px; } .todo { color:var(--todo); } .bad { color:var(--bad); }
+  .ev { font-size:13px; border-left:3px solid var(--line); padding:3px 8px; margin:4px 0; }
+  .ev.ad-ev { border-color:var(--ad); } .ev.bad-ev { border-color:var(--bad); }
+  #ads:empty::before { content:"No SVTA2053 signal yet."; color:var(--muted); font-size:13px; }
+  code { font-size:12px; }
+</style>
+</head>
+<body>
+<main>
+  <section class="card" style="grid-column:1/-1">
+    <h1>Ads Identity player</h1>
+    <div class="muted">Reads the HAND IDs from the SVTA2053 <code>EXT-X-DATERANGE</code> of the ad, in both paths:
+      the playlist it loads (SSAI) or the ad's own playlist inside an HLS Interstitial (SGAI).</div>
+    <nav class="sources" id="sources"></nav>
+    <form id="custom"><input name="src" placeholder="…or any playlist URL" aria-label="Playlist URL"><button>Load</button></form>
+  </section>
+
+  <section class="card">
+    <video id="video" controls muted playsinline></video>
+    <div class="muted" style="margin-top:6px">Source: <code id="src"></code></div>
+    <h2 style="margin-top:14px">Events</h2>
+    <div id="events"></div>
+  </section>
+
+  <section class="card">
+    <h2>Ads found</h2>
+    <div id="ads"></div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15/dist/hls.min.js"></script>
+<script type="module">
+import { createPlayer } from "./player.js";
+
+const SOURCES = [
+  ["Test · SSAI (stitched)", "test/ssai.m3u8"],
+  ["Test · SGAI (interstitial)", "test/sgai.m3u8"],
+  ["Packaged ad · legit", "../out/ad/legit/index.m3u8"],
+  ["Packaged ad · tampered", "../out/ad/tampered/index.m3u8"],
+];
+const src = new URLSearchParams(location.search).get("src") || SOURCES[0][1];
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const $ = (id) => document.getElementById(id);
+$("src").textContent = src;
+$("sources").innerHTML = SOURCES.map(([label, s]) =>
+  `<a href="?src=${encodeURIComponent(s)}" aria-current="${s === src}">${esc(label)}</a>`).join("");
+$("custom").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const v = new FormData(e.target).get("src");
+  if (v) location.search = "?src=" + encodeURIComponent(v);
+});
+
+const t = () => $("video").currentTime.toFixed(2);
+function onEvent(text, kind) {
+  const div = document.createElement("div");
+  div.className = "ev" + (kind === "ad" ? " ad-ev" : kind === "bad" ? " bad-ev" : "");
+  div.innerHTML = `<span class="muted">t=${t()}s</span> ${esc(text)}`;
+  $("events").prepend(div);
+}
+
+const LABEL = { type01: "HAND Type 01", type02: "HAND Type 02", type04: "HAND Type 04" };
+function onAd(ad) {
+  const div = document.createElement("div");
+  if (ad.error) {
+    div.className = "ad error";
+    div.innerHTML = `<b>DATERANGE ID="${esc(ad.id)}"</b> · ${esc(ad.path)}<div class="bad">Unreadable: ${esc(ad.error)}</div>`;
+  } else {
+    const rows = [
+      ["found in", ad.path],
+      ["playlist", ad.playlist],
+      ["CLASS", ad.class],
+      ["Ad-ID", ad.adId ?? "—"],
+      ...Object.entries(ad.hand).sort().map(([k, v]) => [LABEL[k] ?? k, v]),
+      ...ad.other.map((o) => [o.scheme, o.value]),
+    ];
+    div.className = "ad";
+    div.innerHTML = `<b>DATERANGE ID="${esc(ad.id)}"</b> · ${ad.duration ?? "?"} s
+      <table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table>
+      <div class="checks">
+        <div class="todo">Permission check (HAND registry): not built yet</div>
+        <div class="todo">Signature check (remote C2PA manifest): not built yet</div>
+      </div>`;
+  }
+  $("ads").append(div);
+  onEvent(`SVTA2053 read from ${ad.path}`, "ad");
+  window.__ads.push(ad);
+}
+
+window.__ads = [];
+const ids = await (await fetch("../ids.json")).json();
+const player = createPlayer($("video"), { schemes: ids.svta2053.schemes, onAd, onEvent });
+window.__hls = player.hls;
+player.load(src);
+</script>
+</body>
+</html>

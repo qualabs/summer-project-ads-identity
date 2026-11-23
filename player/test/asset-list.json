@@ -1,0 +1,15 @@
+{
+  "ASSETS": [
+    {
+      "URI": "/player/test/sgai-ad.m3u8",
+      "DURATION": 12.0,
+      "X-AD-CREATIVE-SIGNALING": {
+        "version": 2,
+        "type": "slot",
+        "payload": [
+          { "type": "linear", "start": 0, "duration": 12, "tracking": [] }
+        ]
+      }
+    }
+  ]
+}
