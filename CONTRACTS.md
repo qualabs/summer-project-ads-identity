@@ -169,6 +169,12 @@ Rules:
   live in `ids.json`; nothing else hardcodes them.
 - The content's SCTE-35 placement opportunity (0x34 / 0x35) only marks the
   break. It carries no HAND IDs.
+- In SGAI the HAND IDs are only in the ad's own playlist, not in the content
+  playlist (its interstitial just points to vast-2-sgai) nor in vast-2-sgai's
+  asset list. hls.js loads that playlist in a separate player for the
+  interstitial, so the player page reads the `EXT-X-DATERANGE` from there.
+- vast-2-sgai's asset list has its own `X-AD-CREATIVE-SIGNALING` (version 2,
+  tracking only). It is not this signal: the player never reads HAND IDs from it.
 
 ## 4. Signature proof
 
@@ -186,8 +192,9 @@ manifest gives the player one code path for both.
 
 To settle while building Phase 6:
 
-- Where the manifest URL goes in the VAST and how it reaches the player in
-  SSAI, where the player never sees the VAST.
+- Where the manifest URL goes so it reaches the player: the player doesn't see
+  the VAST in SSAI nor in SGAI. Proposal: the same SVTA2053 `EXT-X-DATERANGE`
+  as the HAND IDs.
 - How the manifest is tied to the stitched ad, given that its hash is of the
   mezzanine and not of the segments the player gets.
 - Whether c2pa-js can verify a detached manifest in the browser.
