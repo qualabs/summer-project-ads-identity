@@ -6,15 +6,17 @@ stream, the same packaged ad and the same player. This file is the format each
 piece hands to the next one, so the two paths fit together without either one
 building its own copy.
 
-A change to anything marked **Frozen** needs both path owners to agree and is
-made in the same commit as the code that changes it.
+All four are **Frozen**: agreed by both path owners. A change needs both to
+agree and is made in the same commit as the code that changes it. Contracts 1
+and 3 describe what the code already does; 2 and 4 are agreed designs that are
+not built yet, and each lists what still has to be verified while building.
 
 | # | Contract | Written by | Read by | Status |
 |---|----------|------------|---------|--------|
 | 1 | Bridge output | `pipeline/bridge.py` | ad server, ad packaging | Frozen (matches the code) |
-| 2 | VAST | ad server | MediaTailor, vast-2-sgai | Proposed |
+| 2 | VAST | ad server | MediaTailor, vast-2-sgai | Frozen (agreed, not built yet) |
 | 3 | Playlist signal | ad packaging (SGAI), MediaTailor or post-stitch fix-up (SSAI) | player | Frozen (matches the code) |
-| 4 | Signature proof | ad packaging | player | Proposed |
+| 4 | Signature proof | ad packaging | player | Frozen (agreed, not built yet) |
 
 The HAND IDs in the examples are placeholders (`10.23/AAAA-…`). Real IDs come
 only from the C2PA manifest of the mezzanine, never from this file.
@@ -78,7 +80,7 @@ If the C2PA does not validate, it exits with code 2 and removes both files:
 The playlist writer copies `daterange_attributes` as they are and adds only
 `ID` and `START-DATE` (see contract 3). It never rebuilds the payload.
 
-## 2. VAST (proposed)
+## 2. VAST
 
 One ad server, one endpoint, one VAST for both paths. The ad server builds it
 from `hand_ids.json`; it never opens the video file.
@@ -113,14 +115,19 @@ from `hand_ids.json`; it never opens the video file.
 </VAST>
 ```
 
-To agree before freezing:
+Agreed:
 
-- **Where the HAND IDs go.** `Extensions` is our proposal; the question is open
-  with Sarge and David (`AdVerifications` is the alternative).
-- **Which `MediaFile`s.** We expect MediaTailor to need the MP4 (it re-encodes
-  the ad) and vast-2-sgai the HLS playlist. Not confirmed with either tool yet.
-- **ID form inside the VAST.** Proposal: the resolvable URL
-  (`https://doi.org/10.23/…`), same as the SCTE-35 URI UPID. Pending Will.
+- **Where the HAND IDs go.** In `Extensions`, as `<Extension type="hand-id">`.
+- **Which `MediaFile`s.** Both: the MP4 for MediaTailor (it re-encodes the ad)
+  and the HLS playlist for vast-2-sgai.
+- **ID form inside the VAST.** The resolvable URL (`https://doi.org/10.23/…`),
+  same as the SCTE-35 URI UPID.
+
+To verify while building (a different answer reopens this contract):
+
+- That MediaTailor and vast-2-sgai each pick the `MediaFile` we expect.
+- Sarge and David's answer on where HAND IDs belong in a VAST, and Will's on
+  the URI form.
 
 ## 3. Playlist signal
 
@@ -165,12 +172,12 @@ Rules:
 - The content's SCTE-35 placement opportunity (0x34 / 0x35) only marks the
   break. It carries no HAND IDs.
 
-## 4. Signature proof (proposed)
+## 4. Signature proof
 
 The player has to check that the IDs in the playlist are the ones the producer
 signed. It never receives the signed mezzanine, only segments.
 
-Proposal: a **remote C2PA manifest** in both paths. The manifest is published
+Agreed: a **remote C2PA manifest** in both paths. The manifest is published
 next to the packaged ad, the VAST points to it, and the player downloads it,
 verifies the signature and compares its `org.hand-id.identity` assertion with
 the identifiers from contract 3.
@@ -179,7 +186,7 @@ Why remote and not per-segment C2PA: MediaTailor re-encodes the ad, so a
 signature embedded in the media does not survive the SSAI path. A remote
 manifest gives the player one code path for both.
 
-To agree before freezing:
+To settle while building Phase 6:
 
 - Where the manifest URL goes in the VAST and how it reaches the player in
   SSAI, where the player never sees the VAST.
