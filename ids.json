@@ -1,0 +1,18 @@
+{
+  "_note": "Only what is NOT in the C2PA manifest. The HAND IDs come from the manifest (pipeline/bridge.py extracts them). PLACEHOLDER values are marked with placeholder:true.",
+  "ad_id": {
+    "id": "QLAB0000001H",
+    "placeholder": true,
+    "label": "Test Ad-ID for the creative (replace once the real one arrives)"
+  },
+  "svta2053": {
+    "_note": "SVTA2053 defines no scheme for HAND: the urn:hand-id:* schemes are PROVISIONAL, to be agreed with HAND. The Ad-ID one is taken from the spec's example.",
+    "class": "urn:svta:advertising-wg:ad-creative-signaling",
+    "schemes": {
+      "ad_id": "urn:smpte:ul:060E2B34.01040101.01200900.00000000",
+      "type01": "urn:hand-id:type01",
+      "type02": "urn:hand-id:type02",
+      "type04": "urn:hand-id:type04"
+    }
+  }
+}
