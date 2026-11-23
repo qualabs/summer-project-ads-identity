@@ -9,7 +9,7 @@ building its own copy.
 All four are **Frozen**: agreed by both path owners. A change needs both to
 agree and is made in the same commit as the code that changes it. Contracts 1
 and 3 describe what the code already does; 2 and 4 are agreed designs that are
-not built yet, and each lists what still has to be verified while building.
+not built yet.
 
 | # | Contract | Written by | Read by | Status |
 |---|----------|------------|---------|--------|
@@ -123,11 +123,9 @@ Agreed:
 - **ID form inside the VAST.** The resolvable URL (`https://doi.org/10.23/…`),
   same as the SCTE-35 URI UPID.
 
-To verify while building (a different answer reopens this contract):
-
-- That MediaTailor and vast-2-sgai each pick the `MediaFile` we expect.
-- Sarge and David's answer on where HAND IDs belong in a VAST, and Will's on
-  the URI form.
+To test when each path is built: that MediaTailor picks the MP4 and vast-2-sgai
+the HLS playlist. This is a check of how the tools behave, not an open
+decision.
 
 ## 3. Playlist signal
 
