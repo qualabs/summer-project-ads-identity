@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Python
 __pycache__/
+
+# Local media (signed mezzanines, manifests)
+media_src/
