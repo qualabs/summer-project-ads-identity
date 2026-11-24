@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Content stream check</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; max-width: 900px; }
+  video { width: 100%; background: #000; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  td, th { border: 1px solid #ccc; padding: 4px 6px; text-align: left; vertical-align: top; word-break: break-all; }
+  #status { font-weight: 600; }
+</style>
+</head>
+<body>
+<!--
+  Does the content stream play in hls.js, and does hls.js expose the ad break?
+  Serve the repo root and open this page (see the README):
+    python -m http.server 8000
+    http://localhost:8000/content/check.html
+  ?src= picks another playlist. This page decodes nothing: the SCTE-35 itself
+  is checked by the tests, with threefive.
+-->
+<h1>Content stream check</h1>
+<p id="status">Loading…</p>
+<video id="video" controls muted></video>
+<h2>EXT-X-DATERANGE seen by hls.js</h2>
+<table id="ranges"><tr><th>ID</th><th>Media time (s)</th><th>Duration (s)</th><th>SCTE35-OUT</th><th>SCTE35-IN</th></tr></table>
+<h2>Metadata cues on the video element</h2>
+<table id="cues"><tr><th>Start (s)</th><th>End (s)</th><th>Key</th></tr></table>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script>
+  const src = new URLSearchParams(location.search).get("src") || "../out/content/index.m3u8";
+  const video = document.getElementById("video");
+  const status = document.getElementById("status");
+  const hex = (v) => v ? "0x" + Array.from(new Uint8Array(v), (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase() : "";
+  const row = (table, cells) => {
+    const tr = document.getElementById(table).insertRow();
+    cells.forEach((c) => { tr.insertCell().textContent = c; });
+  };
+  // What the page found, for whoever drives it from a console or a test
+  window.check = { src, dateRanges: [], cues: [], errors: [] };
+
+  const hls = new Hls({ enableDateRangeMetadataCues: true });
+  hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
+    const d = data.details;
+    window.check.dateRanges = Object.values(d.dateRanges).map((r) => ({
+      id: r.id,
+      // Where the range is on the media timeline, from the PROGRAM-DATE-TIME of the playlist
+      start: (r.startDate.getTime() - d.fragments[0].programDateTime) / 1000 + d.fragments[0].start,
+      duration: r.duration,
+      scte35Out: hex(r.attr["SCTE35-OUT"] && r.attr.hexadecimalInteger("SCTE35-OUT")),
+      scte35In: hex(r.attr["SCTE35-IN"] && r.attr.hexadecimalInteger("SCTE35-IN")),
+    }));
+    for (const r of window.check.dateRanges) {
+      row("ranges", [r.id, r.start.toFixed(3), r.duration, r.scte35Out, r.scte35In]);
+    }
+    status.textContent = `Loaded ${src}: ${d.fragments.length} segments, ${d.totalduration.toFixed(3)} s, ` +
+      `${window.check.dateRanges.length} date range(s)`;
+  });
+  hls.on(Hls.Events.ERROR, (_, data) => {
+    window.check.errors.push(data.details);
+    status.textContent = `hls.js error: ${data.details}`;
+  });
+  video.textTracks.addEventListener("addtrack", (e) => {
+    if (e.track.kind !== "metadata") return;
+    e.track.mode = "hidden";
+    e.track.addEventListener("cuechange", () => {});
+    const seen = new Set();
+    setInterval(() => {
+      for (const cue of e.track.cues || []) {
+        const key = `${cue.id}|${cue.value && cue.value.key}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        window.check.cues.push({ id: cue.id, start: cue.startTime, end: cue.endTime, key: cue.value && cue.value.key });
+        row("cues", [cue.startTime.toFixed(3), cue.endTime.toFixed(3), cue.value && cue.value.key]);
+      }
+    }, 500);
+  });
+  hls.loadSource(src);
+  hls.attachMedia(video);
+</script>
+</body>
+</html>

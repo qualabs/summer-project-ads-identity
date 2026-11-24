@@ -13,6 +13,9 @@ parallel and share everything else:
   IDs, writes `out/bridge/hand_ids.json` and `out/bridge/svta2053.json`
 - `pipeline/extract_hand.py` — the C2PA read and validation used by the bridge
 - `pipeline/svta2053.py` — SVTA2053 payload and `EXT-X-DATERANGE` line
+- `content/` — the content stream: `make_stream.py` packages the programme to
+  HLS VOD in `out/content/`, with the ad break marked by SCTE-35 `0x34`/`0x35`
+  in `EXT-X-DATERANGE` (see its README)
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 
