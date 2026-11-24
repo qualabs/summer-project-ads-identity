@@ -187,6 +187,25 @@ class Plan(unittest.TestCase):
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "needs ffmpeg and ffprobe")
+class OutputFolder(unittest.TestCase):
+    def test_only_its_own_files_are_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            ours = ["index.m3u8", "media.m3u8", "content.json", "seg_0000.ts", "seg_0042.ts"]
+            theirs = ["programme.mp4", "notes.txt", "other.m3u8"]
+            for name in ours + theirs:
+                (out / name).write_text("x")
+            (out / "keep").mkdir()
+            make_stream.clear_output(out)
+            self.assertEqual({p.name for p in out.iterdir()}, set(theirs) | {"keep"})
+
+    def test_missing_folder_is_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "a" / "b"
+            make_stream.clear_output(out)
+            self.assertTrue(out.is_dir())
+
+
 class EndToEnd(unittest.TestCase):
     """Encodes 12 s of testsrc at 29.97 fps (the awkward frame rate) with a 3.3 s break."""
 

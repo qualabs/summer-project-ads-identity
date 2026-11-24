@@ -60,7 +60,7 @@ python content/make_stream.py media_src/tears_of_steel_720p.mov
 | `--break-at` | `60` | where the break goes, in seconds of programme; repeat it for more breaks |
 | `--break-duration` | from the bridge | override the ad duration |
 | `--bridge-output` | `out/bridge` | folder with the bridge's `hand_ids.json` |
-| `--out` | `out/content` | output folder; it is emptied first |
+| `--out` | `out/content` | output folder; only what an earlier run wrote there (`seg_*.ts`, the two playlists, `content.json`) is removed first |
 | `--height` | `720` | height of the rendition |
 | `--segment-seconds` | `6` | segment length |
 | `--cue-tags` | off | also write `EXT-X-CUE-OUT` / `EXT-X-CUE-IN` at the break (see below) |
@@ -142,7 +142,9 @@ needs a second `EXT-X-DATERANGE` of class `com.apple.hls.interstitial` at the
 same place, pointing at vast-2-sgai. **This folder does not write that tag**:
 it is a step of the SGAI path. `content.json` and the `break-1` tag give it
 what it needs: `START-DATE` is the break's start, and `X-RESUME-OFFSET` must be
-the break's `DURATION` so the player skips the slate.
+the break's `DURATION` so the player skips the slate. The SGAI path reads them
+from `content.json` (`breaks[].start_date` and `breaks[].duration`), so those
+two fields must not change name or meaning.
 
 ## What we found
 
@@ -157,7 +159,8 @@ the break's `DURATION` so the player skips the slate.
 - hls.js 1.5.17 plays the stream across both edges of the break and merges the
   two tags of `break-1` into one date range, 60.000 s to 138.083 s, with both
   `SCTE35-OUT` and `SCTE35-IN`. It also exposes them as metadata cues on the
-  video element.
+  video element. hls.js 1.6.15, the version of the player (HLS Interstitials,
+  so the SGAI path, need 1.6), does the same and logs no errors.
 
 What was verified, and with what:
 
@@ -165,7 +168,7 @@ What was verified, and with what:
 |---|---|
 | Segmentation types, boundaries, duration | the tests (synthetic clips) |
 | Default run, duration from the bridge's `hand_ids.json` | Tears of Steel 720p: segment count, total duration and the two break tags, read from the playlist and with ffprobe |
-| Playback and date range in hls.js | synthetic clips only, in Chromium |
+| Playback and date range in hls.js 1.5.17 and 1.6.15 | synthetic clips only, in Chromium |
 
 Not verified:
 

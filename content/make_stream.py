@@ -21,7 +21,6 @@ Needs ffmpeg and ffprobe on the PATH, and threefive (pip install threefive).
 import argparse
 import json
 import math
-import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -186,6 +185,22 @@ def break_duration_from_bridge(bridge_output):
     return json.loads(path.read_text(encoding="utf-8"))["source"]["duration"]
 
 
+# Everything a run writes to the output folder, and all it ever removes from it
+OUTPUT_FILES = ("index.m3u8", "media.m3u8", "content.json")
+OUTPUT_SEGMENTS = "seg_*.ts"
+
+
+def clear_output(out):
+    """
+    Remove what an earlier run wrote, and nothing else: --out may point at a
+    folder that holds other files (media_src, say), and they must survive.
+    """
+    out.mkdir(parents=True, exist_ok=True)
+    for old in [out / name for name in OUTPUT_FILES] + list(out.glob(OUTPUT_SEGMENTS)):
+        if old.is_file():
+            old.unlink()
+
+
 def build(src, out, break_at, break_duration, height=720, segment_seconds=SEGMENT_SECONDS,
           cue_tags=False, start_date=START_DATE):
     """Encode, write the playlists and content.json. Returns what content.json holds."""
@@ -194,11 +209,9 @@ def build(src, out, break_at, break_duration, height=720, segment_seconds=SEGMEN
     pieces, cuts, breaks = plan(break_at, break_duration, info["fps"], info["duration"], segment_seconds)
     graph, width = filter_graph(pieces, info, height)
 
-    if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
+    clear_output(out)
     encode(src, out, graph, cuts, info["fps"])
-    segments = [measure(p, info["fps"]) for p in sorted(out.glob("seg_*.ts"))]
+    segments = [measure(p, info["fps"]) for p in sorted(out.glob(OUTPUT_SEGMENTS))]
     located = locate_breaks(segments, breaks)
 
     start = playlist.parse_iso(start_date)
@@ -233,6 +246,7 @@ def build(src, out, break_at, break_duration, height=720, segment_seconds=SEGMEN
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows console defaults to cp1252
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[1])
     ap.add_argument("source", help="open-licensed programme video (keep it in media_src/)")
     ap.add_argument("--break-at", type=float, action="append", metavar="SECONDS",
