@@ -17,7 +17,12 @@ For each ad it shows the Ad-ID and the HAND IDs in a panel, matched by
 `scheme` (from `ids.json`, not hardcoded). It accepts both `CLASS` values
 (`ad-creative-signaling` and `ad-id-signaling`) and only version 1 payloads
 with `identifiers`, so vast-2-sgai's asset list `X-AD-CREATIVE-SIGNALING`
-(version 2, tracking) is never mistaken for it.
+(version 2, tracking) is never mistaken for it. Unknown schemes are ignored;
+a scheme that appears twice makes the payload unreadable.
+
+Each ad is reported once: per DATERANGE `ID` and `START-DATE`, in the main
+playlist or in one interstitial asset. Not per playlist URL, since a
+multi-variant stream (MediaTailor's output) loads one playlist per rendition.
 
 The permission check (HAND registry) and the signature check (remote C2PA
 manifest) plug into `onAd(ad)` in `index.html`; the panel already has a line

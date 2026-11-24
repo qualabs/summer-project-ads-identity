@@ -3,7 +3,8 @@
 // An EXT-X-DATERANGE whose CLASS is one of CLASSES carries the payload in
 // X-AD-CREATIVE-SIGNALING: base64 of {"version": 1, "identifiers": [...]}.
 // Identifiers are matched by scheme, never by position; unknown schemes are
-// kept but not labelled. The HAND schemes come from ids.json (nothing here
+// ignored (contract 3), and a scheme that appears twice makes the payload
+// unreadable rather than picking one value. The HAND schemes come from ids.json (nothing here
 // hardcodes them).
 
 // Both CLASS values are accepted until we know what MediaTailor emits:
@@ -34,15 +35,18 @@ export function decode(b64) {
 }
 
 // schemes: ids.json's svta2053.schemes, e.g. {ad_id: "urn:smpte:…", type01: "urn:hand-id:type01"}
-// Returns {adId, hand: {type01, type02, type04}, other: [...]}
+// Returns {adId, hand: {type01, type02, type04}}. Throws on a repeated scheme:
+// the permission check must not run on an ID chosen arbitrarily.
 export function byScheme(identifiers, schemes) {
   const kindOf = Object.fromEntries(Object.entries(schemes).map(([k, v]) => [v, k]));
-  const out = { adId: null, hand: {}, other: [] };
+  const out = { adId: null, hand: {} };
+  const seen = new Set();
   for (const { scheme, value } of identifiers) {
+    if (seen.has(scheme)) throw new Error(`scheme ${scheme} appears more than once`);
+    seen.add(scheme);
     const kind = kindOf[scheme];
     if (kind === "ad_id") out.adId = value;
     else if (kind?.startsWith("type")) out.hand[kind] = value;
-    else out.other.push({ scheme, value });
   }
   return out;
 }

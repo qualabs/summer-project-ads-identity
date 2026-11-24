@@ -15,12 +15,16 @@ export function createPlayer(video, { schemes, onAd, onEvent }) {
   const seen = new Set();
   const event = (text, kind) => onEvent?.(text, kind);
 
-  // Read every SVTA2053 DATERANGE of a loaded playlist
-  function readPlaylist(details, path) {
+  // Read every SVTA2053 DATERANGE of a loaded playlist. scope says which ad
+  // this is: the main playlist, or one interstitial asset (SGAI).
+  function readPlaylist(details, path, scope) {
     for (const r of Object.values(details.dateRanges || {})) {
       if (!isSignal(r)) continue;
-      const key = `${path}|${details.url}|${r.id}`;
-      if (seen.has(key)) continue; // live playlists reload; report each ad once
+      // Report each ad once. Not keyed on the playlist URL: LEVEL_LOADED fires
+      // for every rendition of a multi-variant stream (and live playlists
+      // reload), and each would be the same ad again.
+      const key = `${scope}|${r.id}|${r.startDate?.getTime?.() ?? r.startDate}`;
+      if (seen.has(key)) continue;
       seen.add(key);
       let ad;
       try {
@@ -38,7 +42,8 @@ export function createPlayer(video, { schemes, onAd, onEvent }) {
   const hls = new Hls({ enableDateRangeMetadataCues: true });
 
   // SSAI (or an ad playlist loaded directly): the DATERANGE is in this playlist
-  hls.on(Hls.Events.LEVEL_LOADED, (_, { details }) => readPlaylist(details, "main playlist"));
+  hls.on(Hls.Events.LEVEL_LOADED, (_, { details }) =>
+    readPlaylist(details, "main playlist", "main"));
 
   // SGAI: interstitials
   hls.on(Hls.Events.ASSET_LIST_LOADED, (_, d) => {
@@ -47,9 +52,13 @@ export function createPlayer(video, { schemes, onAd, onEvent }) {
   });
   hls.on(Hls.Events.INTERSTITIAL_ASSET_PLAYER_CREATED, (_, d) => {
     const assetHls = d.player?.hls;
+    // One scope per break and asset: two breaks may play ads whose DATERANGEs
+    // share ID and START-DATE (each is relative to its own playlist). The same
+    // break played again (a player created again after a seek) is the same ad.
+    const scope = `asset|${d.event?.identifier ?? ""}|${d.asset?.identifier ?? ""}`;
     event(`Interstitial asset player created for ${d.asset?.uri ?? "?"}`, "ad");
     assetHls?.on(Hls.Events.LEVEL_LOADED, (_, { details }) =>
-      readPlaylist(details, "interstitial asset (SGAI)"));
+      readPlaylist(details, "interstitial asset (SGAI)", scope));
   });
   hls.on(Hls.Events.INTERSTITIAL_STARTED, () => event("Interstitial started", "ad"));
   hls.on(Hls.Events.INTERSTITIAL_ENDED, () => event("Interstitial ended, back to content"));

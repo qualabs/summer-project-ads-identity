@@ -54,7 +54,9 @@
   </section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15/dist/hls.min.js"
+        integrity="sha384-iZBI1/lW9u8FcBjxuQ8nPTsU7TXhZNtzkV8H3gQHSTgz+VYQoKWqGlBHqhO84alJ"
+        crossorigin="anonymous"></script>
 <script type="module">
 import { createPlayer } from "./player.js";
 
@@ -98,7 +100,6 @@ function onAd(ad) {
       ["CLASS", ad.class],
       ["Ad-ID", ad.adId ?? "—"],
       ...Object.entries(ad.hand).sort().map(([k, v]) => [LABEL[k] ?? k, v]),
-      ...ad.other.map((o) => [o.scheme, o.value]),
     ];
     div.className = "ad";
     div.innerHTML = `<b>DATERANGE ID="${esc(ad.id)}"</b> · ${ad.duration ?? "?"} s

@@ -15,12 +15,15 @@ playlists over the same segments:
 | `legit/index.m3u8` + `seg_*.ts` | SVTA2053, copied from the bridge's `svta2053.json` (`daterange_attributes` + `ID` + `START-DATE`), as in CONTRACTS.md contract 3 |
 | `legit/ad.mp4` | The same encode as one MP4, for MediaTailor (SSAI) |
 | `tampered/index.m3u8` (points to `../legit/seg_*.ts`) | Same, with one HAND ID changed (`--tamper`, default `type04`): what someone on the path would do |
-| `tampered/ad.mp4` | A copy of `legit/ad.mp4` |
+| `tampered/ad.mp4` | The same MP4 (a hard link, or a copy where links don't work) |
+| `default/index.m3u8` + `ad.mp4` | The legit ad again (playlist over `../legit/seg_*.ts`), for the ad server's default name |
 | `ad.json` | What went into each playlist |
 
-The bridge output (`hand_ids.json`, `svta2053.json`) goes to `out/bridge/`, as
-the other pieces expect by default, and also to `out/bridge/legit/` and
-`out/bridge/tampered/`.
+The bridge output is written **last**, once all of that is in place:
+`hand_ids.json` and `svta2053.json` in `out/bridge/` (the default ad, and what
+the other pieces read by default), and only `hand_ids.json` in
+`out/bridge/legit/` and `out/bridge/tampered/` (all the ad server reads there;
+a `svta2053.json` would not match the tampered playlist).
 
 ## Where the files have to be
 
@@ -34,10 +37,11 @@ fixed pattern, and they then fetch those URLs:
 ```
 
 So `out/ad/` is laid out in that pattern, one folder per ad name (`legit`,
-`tampered`), and served at `<media-base>`. The ad server also needs the bridge
-output under that name (`out/bridge/<name>/hand_ids.json`), or it answers an
-empty VAST: hence the copies in `out/bridge/legit/` and `out/bridge/tampered/`.
-Both carry the legit IDs: the attack changes the playlist, not the VAST.
+`tampered`, and `default`, the name the ad server uses without `?ad=`), and
+served at `<media-base>`. The ad server also needs the bridge output under that
+name (`out/bridge/<name>/hand_ids.json`, or `out/bridge/hand_ids.json` for the
+default), or it answers an empty VAST. Every name carries the legit IDs: the
+attack changes the playlist, not the VAST.
 
 To check that each name resolves (with `out/ad/` served on port 8090):
 
@@ -46,11 +50,17 @@ python adserver/server.py --media-base http://localhost:8090/out/ad
 curl "http://127.0.0.1:8080/vast?ad=legit"
 ```
 
-The other tampering case, a mezzanine without a valid signature, never gets
-packaged: the bridge refuses it, and `package_ad.py` exits with code 2 and
-removes `out/ad/` and the bridge output (`out/bridge/` and its `legit/` and
-`tampered/` folders), so nothing servable is left behind: the ad server
-answers an empty VAST.
+## When something fails
+
+Nothing servable is left behind, so the ad server answers an empty VAST:
+
+- **Invalid signature** (the other tampering case): the bridge refuses the
+  mezzanine and `package_ad.py` exits with code 2.
+- **Packaging fails** (ffmpeg, a missing duration): it exits with an error.
+
+In both cases it removes the bridge output and the packaged folders. It only
+removes what it writes (`legit/`, `tampered/`, `default/`, `ad.json` and the
+bridge's JSON files), never the whole `--out` folder.
 
 ## How to run
 
@@ -60,6 +70,12 @@ outside git (`media_src/` or anywhere else).
 ```bash
 python ad-packaging/package_ad.py media_src/signed_ad.mp4
 python ad-packaging/package_ad.py media_src/signed_ad.mp4 --tamper type02
+```
+
+Tests (no mezzanine, c2patool or ffmpeg needed):
+
+```bash
+python -m unittest discover ad-packaging
 ```
 
 Check what a playlist carries:
