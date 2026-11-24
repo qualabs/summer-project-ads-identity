@@ -13,6 +13,8 @@ parallel and share everything else:
   IDs, writes `out/bridge/hand_ids.json` and `out/bridge/svta2053.json`
 - `pipeline/extract_hand.py` — the C2PA read and validation used by the bridge
 - `pipeline/svta2053.py` — SVTA2053 payload and `EXT-X-DATERANGE` line
+- `adserver/` — the ad server: `GET /vast` builds the VAST of contract 2 from
+  the bridge's `hand_ids.json` (see its README)
 - `content/` — the content stream: `make_stream.py` packages the programme to
   HLS VOD in `out/content/`, with the ad break marked by SCTE-35 `0x34`/`0x35`
   in `EXT-X-DATERANGE` (see its README)
