@@ -4,11 +4,15 @@ Tests for the ad server. HAND IDs here are placeholders, never real ones.
   python -m unittest discover adserver
 """
 
+import contextlib
+import io
 import json
+import os
 import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -16,6 +20,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lambda_handler  # noqa: E402
 import server  # noqa: E402
 import source  # noqa: E402
 import vast  # noqa: E402
@@ -238,6 +243,55 @@ class Source(unittest.TestCase):
         self.addCleanup(httpd.shutdown)
         with urllib.request.urlopen(f"http://127.0.0.1:{httpd.server_address[1]}/vast") as r:
             self.assertEqual((r.status, len(ET.fromstring(r.read()))), (200, 0))
+
+
+class Lambda(unittest.TestCase):
+    """The Function URL event in, the same answers as the local server out."""
+
+    def event(self, path, query="", method="GET"):
+        return {"rawPath": path, "rawQueryString": query, "requestContext": {"http": {"method": method}}}
+
+    def ask(self, *args, ads=None, **kwargs):
+        ads = {None: hand_ids(), "legit": hand_ids()} if ads is None else ads
+        with contextlib.redirect_stdout(io.StringIO()):
+            return lambda_handler.respond(self.event(*args, **kwargs), ads.get, "https://cdn.test/ad")
+
+    def test_serves_the_default_and_a_named_ad(self):
+        for query, name in (("", "default"), ("ad=legit", "legit")):
+            response = self.ask("/vast", query)
+            self.assertEqual(response["statusCode"], 200)
+            self.assertEqual(response["headers"]["Content-Type"], "application/xml; charset=utf-8")
+            self.assertEqual(response["headers"]["Access-Control-Allow-Origin"], "*")
+            root = ET.fromstring(response["body"])
+            self.assertEqual(len(list(root.iter("HandId"))), 3)
+            self.assertEqual([f.text for f in root.iter("MediaFile")],
+                             [f"https://cdn.test/ad/{name}/ad.mp4", f"https://cdn.test/ad/{name}/index.m3u8"])
+
+    def test_no_bridge_output_means_no_ad(self):
+        response = self.ask("/vast", "ad=tampered")
+        self.assertEqual((response["statusCode"], len(ET.fromstring(response["body"]))), (200, 0))
+
+    def test_unreadable_source_means_no_ad(self):
+        def down(ad):
+            raise OSError("S3 is down")
+        with contextlib.redirect_stdout(io.StringIO()):
+            response = lambda_handler.respond(self.event("/vast"), down, "https://cdn.test/ad")
+        self.assertEqual((response["statusCode"], len(ET.fromstring(response["body"]))), (200, 0))
+
+    def test_same_refusals_as_the_local_server(self):
+        self.assertEqual(self.ask("/vast", "ad=../secret")["statusCode"], 400)
+        self.assertEqual(self.ask("/vast", "ad=")["statusCode"], 200)  # blank value: default ad
+        self.assertEqual(self.ask("/other")["statusCode"], 404)
+        self.assertEqual(self.ask("/vast", method="POST")["statusCode"], 405)
+
+    def test_handler_reads_its_settings_from_the_environment(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        (Path(tmp.name) / "hand_ids.json").write_text(json.dumps(hand_ids()), encoding="utf-8")
+        self.addCleanup(setattr, lambda_handler, "_read_hand_ids", None)
+        with mock.patch.dict(os.environ, {"BRIDGE_OUTPUT": tmp.name, "AD_MEDIA_BASE": "https://cdn.test/ad"}):
+            response = lambda_handler.handler(self.event("/vast"), None)
+        self.assertEqual(len(list(ET.fromstring(response["body"]).iter("HandId"))), 3)
 
 
 if __name__ == "__main__":

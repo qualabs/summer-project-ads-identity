@@ -69,6 +69,14 @@ The `MediaFile` URLs are `<media-base>/<name>/ad.mp4` and
 `default` without one. Both are declared as 1280x720, the size of the packaged
 ad, and `Duration` is `HH:MM:SS.mmm`, not rounded to whole seconds.
 
+## Deployed
+
+`lambda_handler.py` is the same ad server as an AWS Lambda behind a Function
+URL, for MediaTailor and vast-2-sgai to call. It shares `answer()` with
+`server.py`, so both give the same answers. It takes `BRIDGE_OUTPUT` (an
+`s3://bucket/prefix`) and `AD_MEDIA_BASE` from the environment.
+[infra/](../infra/) creates it and sets both.
+
 ## Tests
 
 ```bash
@@ -93,5 +101,5 @@ python -m unittest discover adserver
   piece); whether MediaTailor rejects it is still to be tested.
 - Not tested yet against MediaTailor (that it picks the MP4, and which query
   parameters it sends).
-- It listens on localhost only. MediaTailor needs a public URL: that
-  deployment is part of the SSAI path.
+- `server.py` listens on localhost only. The public URL MediaTailor needs is
+  the same code as a Lambda: see "Deployed" above.
