@@ -14,7 +14,7 @@ the bridge did not trust the file (or never ran): the answer is an empty VAST,
 never the ad without its IDs.
 
   python adserver/server.py [--port 8080] [--bridge-output out/bridge]
-                            [--media-base http://localhost:8000/ads]
+                            [--media-base http://localhost:8090/out/ad]
 
 <bridge-output> is where the bridge output lives: a local folder, an
 http(s):// base URL or an s3://bucket/prefix (see source.py). BRIDGE_OUTPUT
@@ -39,7 +39,7 @@ import vast  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 AD_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 DEFAULT_AD = "default"
-WIDTH, HEIGHT = 1920, 1080
+WIDTH, HEIGHT = 1280, 720  # the packaged ad (720p), same as the content stream
 
 
 def vast_for(read_hand_ids, media_base, ad):
@@ -95,7 +95,7 @@ def main():
     ap.add_argument("--bridge-output", "--bridge-dir", dest="bridge_output",
                     default=os.environ.get("BRIDGE_OUTPUT", str(ROOT / "out" / "bridge")),
                     help="local folder, http(s):// base URL or s3://bucket/prefix")
-    ap.add_argument("--media-base", default=os.environ.get("AD_MEDIA_BASE", "http://localhost:8000/ads"))
+    ap.add_argument("--media-base", default=os.environ.get("AD_MEDIA_BASE", "http://localhost:8090/out/ad"))
     args = ap.parse_args()
 
     handler = make_handler(args.bridge_output, args.media_base)

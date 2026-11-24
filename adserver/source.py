@@ -63,6 +63,13 @@ def _s3(bucket, prefix, client=None):
             body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
         except client.exceptions.NoSuchKey:
             return None
+        except Exception as e:
+            # Without s3:ListBucket, S3 answers AccessDenied, not NoSuchKey,
+            # for a missing key: the same case _http handles with 403.
+            error = getattr(e, "response", None) or {}
+            if error.get("Error", {}).get("Code") == "AccessDenied":
+                return None
+            raise
         return json.loads(body.decode("utf-8"))
     return read
 

@@ -20,9 +20,12 @@ XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
 
 def duration(seconds):
-    """78.047 -> "00:01:18" (HH:MM:SS, whole seconds, as in the contract)."""
-    total = int(round(seconds))
-    return f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}"
+    """78.047 -> "00:01:18.047" (HH:MM:SS.mmm). Not rounded to whole seconds:
+    vast-2-sgai copies it into the asset list's DURATION, and a rounded value
+    can be longer than the ad."""
+    ms = int(round(seconds * 1000))
+    total, ms = divmod(ms, 1000)
+    return f"{total // 3600:02d}:{total % 3600 // 60:02d}:{total % 60:02d}.{ms:03d}"
 
 
 def hand_type(key):

@@ -33,6 +33,11 @@ python adserver/server.py
 curl http://127.0.0.1:8080/vast
 ```
 
+The `MediaFile` URLs only resolve if the packaged ad is served at
+`--media-base`. The default matches the repo served on port 8090
+(`python -m http.server 8090` from the repo root), with the packaged ad in
+`out/ad/`.
+
 To serve more than one ad, give each its own bridge output folder and ask for
 it by name:
 
@@ -45,7 +50,7 @@ curl "http://127.0.0.1:8080/vast?ad=legit"
 |--------|---------|------------|
 | `--port` | `8080` | port, on 127.0.0.1 |
 | `--bridge-output` (or `BRIDGE_OUTPUT`) | `out/bridge` | where the bridge output is: a local folder, an `http(s)://` base URL or an `s3://bucket/prefix` |
-| `--media-base` (or `AD_MEDIA_BASE`) | `http://localhost:8000/ads` | where the packaged ad is served from |
+| `--media-base` (or `AD_MEDIA_BASE`) | `http://localhost:8090/out/ad` | where the packaged ad is served from |
 
 The layout under `--bridge-output` is the same in the three forms:
 `hand_ids.json` for the default ad and `<name>/hand_ids.json` for a named one.
@@ -61,7 +66,8 @@ missing file.
 
 The `MediaFile` URLs are `<media-base>/<name>/ad.mp4` and
 `<media-base>/<name>/index.m3u8`, where `<name>` is the `ad` parameter, or
-`default` without one.
+`default` without one. Both are declared as 1280x720, the size of the packaged
+ad, and `Duration` is `HH:MM:SS.mmm`, not rounded to whole seconds.
 
 ## Tests
 
@@ -79,12 +85,13 @@ python -m unittest discover adserver
 
 ## Limitations and next steps
 
-- The `MediaFile` URLs point to a packaged ad that does not exist yet; the
-  folder layout above is this server's assumption until that piece is built.
+- The `MediaFile` size is fixed at 1280x720. A packaged ad of another size
+  needs the constant in `server.py` changed.
 - The VAST carries exactly what contract 2 shows. VAST 4.2 also asks for an
-  `<Impression>` in every `InLine`; whether MediaTailor or vast-2-sgai reject
-  the VAST without it is still to be tested with each tool.
-- Not tested yet against MediaTailor or vast-2-sgai (which `MediaFile` each
-  one picks, and which query parameters they send).
+  `<Impression>` in every `InLine`. vast-2-sgai's parser accepts the VAST
+  without it and picks the HLS `MediaFile` (checked in the review of this
+  piece); whether MediaTailor rejects it is still to be tested.
+- Not tested yet against MediaTailor (that it picks the MP4, and which query
+  parameters it sends).
 - It listens on localhost only. MediaTailor needs a public URL: that
   deployment is part of the SSAI path.

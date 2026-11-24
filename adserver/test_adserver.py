@@ -23,7 +23,7 @@ import vast  # noqa: E402
 T01 = "10.23/AAAA-AAAA-AAAA-AAAA-0001"
 T02 = "10.23/AAAA-AAAA-AAAA-AAAA-0002"
 T04 = "10.23/AAAA-AAAA-AAAA-AAAA-0004"
-MEDIA = {"mp4": "https://cdn.test/ad.mp4", "hls": "https://cdn.test/index.m3u8", "width": 1920, "height": 1080}
+MEDIA = {"mp4": "https://cdn.test/ad.mp4", "hls": "https://cdn.test/index.m3u8", "width": 1280, "height": 720}
 
 
 def hand_ids(hand=None, seconds=78.047):
@@ -45,14 +45,14 @@ class Vast(unittest.TestCase):
 
         universal = root.find("Ad/InLine/Creatives/Creative/UniversalAdId")
         self.assertEqual((universal.get("idRegistry"), universal.text), ("ad-id.org", "QLAB0000001H"))
-        self.assertEqual(root.findtext("Ad/InLine/Creatives/Creative/Linear/Duration"), "00:01:18")
+        self.assertEqual(root.findtext("Ad/InLine/Creatives/Creative/Linear/Duration"), "00:01:18.047")
 
         files = root.findall("Ad/InLine/Creatives/Creative/Linear/MediaFiles/MediaFile")
         self.assertEqual([(f.get("delivery"), f.get("type"), f.text) for f in files], [
             ("progressive", "video/mp4", MEDIA["mp4"]),
             ("streaming", "application/x-mpegURL", MEDIA["hls"]),
         ])
-        self.assertTrue(all(f.get("width") == "1920" and f.get("height") == "1080" for f in files))
+        self.assertTrue(all(f.get("width") == "1280" and f.get("height") == "720" for f in files))
 
         extension = root.find("Ad/InLine/Extensions/Extension")
         self.assertEqual(extension.get("type"), "hand-id")
@@ -72,9 +72,10 @@ class Vast(unittest.TestCase):
                 vast.build(hand_ids(hand), MEDIA)
 
     def test_duration(self):
-        self.assertEqual(vast.duration(30), "00:00:30")
-        self.assertEqual(vast.duration(59.6), "00:01:00")
-        self.assertEqual(vast.duration(3725.2), "01:02:05")
+        self.assertEqual(vast.duration(30), "00:00:30.000")
+        self.assertEqual(vast.duration(78.6), "00:01:18.600")  # never rounded up to 00:01:19
+        self.assertEqual(vast.duration(59.9996), "00:01:00.000")
+        self.assertEqual(vast.duration(3725.2), "01:02:05.200")
 
     def test_empty_has_no_ad(self):
         root = ET.fromstring(vast.empty())
@@ -113,6 +114,7 @@ class Server(unittest.TestCase):
         self.assertEqual(headers["Access-Control-Allow-Origin"], "*")
         root = ET.fromstring(body)
         self.assertEqual(len(list(root.iter("HandId"))), 3)
+        self.assertTrue(all((f.get("width"), f.get("height")) == ("1280", "720") for f in root.iter("MediaFile")))
         self.assertEqual([f.text for f in root.iter("MediaFile")],
                          ["https://cdn.test/ads/default/ad.mp4", "https://cdn.test/ads/default/index.m3u8"])
 
@@ -150,13 +152,21 @@ class FakeS3:
         class NoSuchKey(Exception):
             pass
 
-    def __init__(self, objects):
+    class ClientError(Exception):
+        def __init__(self, code):
+            super().__init__(code)
+            self.response = {"Error": {"Code": code}}
+
+    def __init__(self, objects, missing=None):
         self.objects = objects
+        self.missing = missing  # error code for a missing key; NoSuchKey when None
 
     def get_object(self, Bucket, Key):
         try:
             data = self.objects[(Bucket, Key)]
         except KeyError:
+            if self.missing:
+                raise self.ClientError(self.missing)
             raise self.exceptions.NoSuchKey(Key)
         return {"Body": type("Body", (), {"read": lambda self: data})()}
 
@@ -210,6 +220,14 @@ class Source(unittest.TestCase):
         self.assertEqual(source.reader("s3://bucket", s3_client=root)(None), hand_ids())
         with self.assertRaises(ValueError):
             source.reader("s3://")
+
+    def test_s3_access_denied_is_a_missing_ad(self):
+        # What S3 answers for a missing key when the caller may not list the bucket.
+        denied = FakeS3({}, missing="AccessDenied")
+        self.assertIsNone(source.reader("s3://bucket/bridge", s3_client=denied)("tampered"))
+        down = FakeS3({}, missing="SlowDown")
+        with self.assertRaises(FakeS3.ClientError):
+            source.reader("s3://bucket/bridge", s3_client=down)(None)
 
     def test_server_answers_no_ad_when_the_source_is_down(self):
         handler = server.make_handler("http://127.0.0.1:1/bridge", "https://cdn.test/ads")
