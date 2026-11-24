@@ -7,9 +7,17 @@ place (out/ad/ by default):
   legit/index.m3u8     the ad's own playlist with the SVTA2053
                        EXT-X-DATERANGE written from the bridge output
                        (svta2053.json), as CONTRACTS.md contract 3 says
+  legit/ad.mp4         the same encode as one MP4 (what MediaTailor takes)
   tampered/index.m3u8  the same segments, but the DATERANGE carries one
                        changed HAND ID: what an attacker on the path would
                        do. The player has to flag it.
+  tampered/ad.mp4      a copy of legit/ad.mp4
+
+That is the layout the ad server (adserver/) builds its MediaFile URLs from:
+<media-base>/<name>/ad.mp4 and <media-base>/<name>/index.m3u8. The bridge
+output goes to out/bridge/ and also to out/bridge/legit/ and
+out/bridge/tampered/, so GET /vast?ad=legit and ?ad=tampered find it. Both
+carry the legit IDs: the attack changes the playlist, not the VAST.
 
 The other tampering case, a mezzanine with no valid signature, never gets
 here: the bridge refuses it (exit code 2) and nothing is packaged.
@@ -37,20 +45,35 @@ import svta2053  # noqa: E402
 PDT = "2026-01-01T00:00:00.000Z"
 SEGMENT_SECONDS = 4
 EVENT_ID = "ad-1"
+VERSIONS = ("legit", "tampered")  # the ad server's ?ad=<name>
 
 
-def encode_hls(src, out_dir):
-    """Re-encode to a streaming rendition and cut it into segments."""
+def encode(src, out_dir):
+    """
+    Re-encode once to a 720p MP4 (ad.mp4) with a keyframe every segment, then
+    cut that same MP4 into HLS segments without re-encoding.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
+    mp4 = out_dir / "ad.mp4"
     subprocess.run([
         "ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
         "-vf", "scale=-2:720", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
         "-force_key_frames", f"expr:gte(t,n_forced*{SEGMENT_SECONDS})",
-        "-c:a", "aac", "-b:a", "128k",
+        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(mp4),
+    ], check=True)
+    subprocess.run([
+        "ffmpeg", "-y", "-loglevel", "error", "-i", str(mp4), "-c", "copy",
         "-f", "hls", "-hls_time", str(SEGMENT_SECONDS), "-hls_playlist_type", "vod",
         "-hls_segment_filename", str(out_dir / "seg_%03d.ts"),
         str(out_dir / "index.m3u8"),
     ], check=True)
+
+
+def clear_outputs(bridge_dir, out):
+    """Nothing servable may be left behind: no bridge output, no packaging."""
+    for d in (bridge_dir, *(bridge_dir / v for v in VERSIONS)):
+        bridge.clear(d)
+    shutil.rmtree(out, ignore_errors=True)
 
 
 def with_daterange(playlist_text, daterange, segment_prefix=""):
@@ -95,23 +118,22 @@ def main():
     try:
         hand_ids, svta = bridge.run(args.mezzanine, args.ad_id, ids["svta2053"])
     except extract_hand.NotTrusted as e:
-        # Remove any earlier packaging too: nothing servable may be left behind
-        bridge.clear(bridge_dir)
-        shutil.rmtree(out, ignore_errors=True)
+        clear_outputs(bridge_dir, out)
         print(f"⛔ {e}. Nothing packaged: this ad must not be served.")
         sys.exit(2)
     if args.tamper not in hand_ids["hand"]:
-        # Same rule: no earlier packaging left behind
-        bridge.clear(bridge_dir)
-        shutil.rmtree(out, ignore_errors=True)
+        clear_outputs(bridge_dir, out)
         sys.exit(f"the manifest has no {args.tamper} to tamper with. Nothing packaged.")
-    bridge.write(bridge_dir, hand_ids, svta)
+    # out/bridge/ for the other pieces' defaults, out/bridge/<version>/ for
+    # the ad server's ?ad=<version>. Same, legit IDs in all three.
+    for d in (bridge_dir, *(bridge_dir / v for v in VERSIONS)):
+        bridge.write(d, hand_ids, svta)
 
     # 2. Encode once
     if out.exists():
         shutil.rmtree(out)
     legit = out / "legit"
-    encode_hls(args.mezzanine, legit)
+    encode(args.mezzanine, legit)
     raw = (legit / "index.m3u8").read_text()
     attrs = svta["daterange_attributes"]
 
@@ -129,14 +151,16 @@ def main():
     bad_line = svta2053.daterange_line(EVENT_ID, PDT, attrs["DURATION"], bad_b64, attrs["CLASS"])
     tampered = out / "tampered"
     tampered.mkdir()
+    shutil.copyfile(legit / "ad.mp4", tampered / "ad.mp4")
     (tampered / "index.m3u8").write_text(with_daterange(raw, bad_line, segment_prefix="../legit/"))
 
     (out / "ad.json").write_text(json.dumps({
         "mezzanine": hand_ids["source"]["file"],
         "sha256": hand_ids["source"]["sha256"],
         "duration": attrs["DURATION"],
-        "legit": {"playlist": "legit/index.m3u8", "hand": hand_ids["hand"]},
-        "tampered": {"playlist": "tampered/index.m3u8", "changed": args.tamper,
+        "legit": {"playlist": "legit/index.m3u8", "mp4": "legit/ad.mp4", "hand": hand_ids["hand"]},
+        "tampered": {"playlist": "tampered/index.m3u8", "mp4": "tampered/ad.mp4",
+                     "changed": args.tamper,
                      "from": original, "to": hand[args.tamper]},
     }, indent=2) + "\n", encoding="utf-8")
 
