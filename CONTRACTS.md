@@ -95,7 +95,7 @@ from `hand_ids.json`; it never opens the video file.
         <Creative>
           <UniversalAdId idRegistry="ad-id.org">QLAB0000001H</UniversalAdId>
           <Linear>
-            <Duration>00:01:18</Duration>
+            <Duration>00:01:18.047</Duration>
             <MediaFiles>
               <MediaFile delivery="progressive" type="video/mp4" …>https://…/ad.mp4</MediaFile>
               <MediaFile delivery="streaming" type="application/x-mpegURL" …>https://…/ad/index.m3u8</MediaFile>

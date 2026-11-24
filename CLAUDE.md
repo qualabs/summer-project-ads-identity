@@ -16,6 +16,11 @@ parallel and share everything else:
 - `ad-packaging/` — the packaged ad: `package_ad.py` writes `out/ad/legit/`
   and `out/ad/tampered/` (MP4 and HLS, the playlist with the SVTA2053
   `EXT-X-DATERANGE`) in the layout the ad server points to (see its README)
+- `adserver/` — the ad server: `GET /vast` builds the VAST of contract 2 from
+  the bridge's `hand_ids.json` (see its README)
+- `content/` — the content stream: `make_stream.py` packages the programme to
+  HLS VOD in `out/content/`, with the ad break marked by SCTE-35 `0x34`/`0x35`
+  in `EXT-X-DATERANGE` (see its README)
 - `player/` — the demo player: reads the HAND IDs from the SVTA2053
   `EXT-X-DATERANGE` in both paths (SSAI and SGAI interstitials); `test/` has
   hand-written playlists (see its README)
