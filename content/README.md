@@ -148,7 +148,8 @@ the break's `DURATION` so the player skips the slate.
 
 - One command writes the stream. With the current ad (78.047 s) and the
   default break at 60 s, the break is 78.083 s: 13 segments of bars from
-  `seg_0010.ts`.
+  `seg_0010.ts`. Tears of Steel (734.167 s) comes out as 812.250 s in 135
+  segments, 280 MB.
 - 78.047 s in 6 s segments would leave a last segment of 0.047 s, which
   ffprobe could not even open. The last segment of each piece takes the
   remainder instead, so a segment can be up to 9 s (`EXT-X-TARGETDURATION` says
@@ -163,13 +164,13 @@ What was verified, and with what:
 | | With |
 |---|---|
 | Segmentation types, boundaries, duration | the tests (synthetic clips) |
-| Default run, duration from the bridge's `hand_ids.json` | a 150 s synthetic 720p clip |
-| Playback and date range in hls.js | the same synthetic clips, in Chromium |
+| Default run, duration from the bridge's `hand_ids.json` | Tears of Steel 720p: segment count, total duration and the two break tags, read from the playlist and with ffprobe |
+| Playback and date range in hls.js | synthetic clips only, in Chromium |
 
 Not verified:
 
-- **The real programme.** No open-licensed video was in `media_src/` when this
-  was built; only synthetic clips went through the script.
+- **Playback of the real programme.** The Tears of Steel stream was written
+  and its playlist checked, but it was not played in a browser.
 - **MediaTailor and vast-2-sgai themselves.** Nothing here ran against either
   (there is no AWS account yet). Whether MediaTailor acts on
   `EXT-X-DATERANGE` in a VOD source is the first thing to test.
