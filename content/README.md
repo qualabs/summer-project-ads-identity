@@ -98,16 +98,6 @@ check the segmentation types `0x34` / `0x35`, that the break starts and ends on
 a segment boundary, and that the duration is the same in the tag, in the cue,
 between the dates and in the segments.
 
-## Check it in hls.js
-
-```bash
-python -m http.server 8000
-```
-
-Open `http://localhost:8000/content/check.html` (`?src=` picks another
-playlist). The page plays the stream with hls.js 1.5.17 and lists the
-`EXT-X-DATERANGE` hls.js parsed and the metadata cues it put on the video.
-
 ## What each consumer expects as the break marker
 
 Checked in the docs and the source, not yet against the running tools.
