@@ -13,6 +13,8 @@ parallel and share everything else:
   IDs, writes `out/bridge/hand_ids.json` and `out/bridge/svta2053.json`
 - `pipeline/extract_hand.py` — the C2PA read and validation used by the bridge
 - `pipeline/svta2053.py` — SVTA2053 payload and `EXT-X-DATERANGE` line
+- `adserver/` — the ad server: `GET /vast` builds the VAST of contract 2 from
+  the bridge's `hand_ids.json` (see its README)
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 
