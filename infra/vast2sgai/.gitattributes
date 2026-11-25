@@ -1,0 +1,2 @@
+# start.sh runs on Lambda (Linux): keep LF line ends on every checkout.
+start.sh text eol=lf
