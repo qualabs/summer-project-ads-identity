@@ -22,6 +22,9 @@ sets the same thing, so a deployed server needs no local files.
 
 The media URLs are <media-base>/<name>/ad.mp4 and <media-base>/<name>/index.m3u8
 (<name> is "default" when no ad is given). AD_MEDIA_BASE sets the same thing.
+
+This file listens on localhost. The deployed ad server is the same code behind
+a Lambda Function URL: see lambda_handler.py and infra/.
 """
 
 import argparse
@@ -40,6 +43,9 @@ ROOT = Path(__file__).resolve().parent.parent
 AD_NAME = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 DEFAULT_AD = "default"
 WIDTH, HEIGHT = 1280, 720  # the packaged ad (720p), same as the content stream
+TEXT = "text/plain; charset=utf-8"
+XML = "application/xml; charset=utf-8"
+HEADERS = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-store"}  # on every answer
 
 
 def vast_for(read_hand_ids, media_base, ad):
@@ -52,39 +58,46 @@ def vast_for(read_hand_ids, media_base, ad):
     return vast.build(hand_ids, media), True
 
 
+def answer(read_hand_ids, media_base, path, query, log=print):
+    """One GET, whoever carries it: the local server below or the Lambda
+    (lambda_handler.py). path and query are the two parts of the URL.
+    Returns (status, body, content_type)."""
+    if path != "/vast":
+        return 404, "not found\n", TEXT
+    ad = parse_qs(query).get("ad", [None])[0]
+    if ad is not None and not AD_NAME.match(ad):
+        return 400, "invalid ad name\n", TEXT
+    try:
+        xml, served = vast_for(read_hand_ids, media_base, ad)
+    except Exception as e:
+        # A hand_ids.json we can't read (remote source down) or can't
+        # turn into the contract's VAST is not a verified ad either:
+        # answer "no ad" and say why in the log.
+        log(f"unusable hand_ids.json for ad={ad}: {e!r}")
+        xml, served = vast.empty(), False
+    if not served:
+        log(f"no bridge output for ad={ad}: empty VAST")
+    return 200, xml, XML
+
+
 def make_handler(bridge_output, media_base):
     """bridge_output: a location source.reader understands, or a reader itself."""
     read_hand_ids = bridge_output if callable(bridge_output) else source.reader(bridge_output)
 
     class Handler(BaseHTTPRequestHandler):
-        def send(self, status, body, content_type):
+        def do_GET(self):
+            url = urlparse(self.path)
+            status, body, content_type = answer(
+                read_hand_ids, media_base, url.path, url.query,
+                log=lambda message: self.log_message("%s", message))
             data = body.encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Cache-Control", "no-store")
+            for name, value in HEADERS.items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(data)
-
-        def do_GET(self):
-            url = urlparse(self.path)
-            if url.path != "/vast":
-                return self.send(404, "not found\n", "text/plain; charset=utf-8")
-            ad = parse_qs(url.query).get("ad", [None])[0]
-            if ad is not None and not AD_NAME.match(ad):
-                return self.send(400, "invalid ad name\n", "text/plain; charset=utf-8")
-            try:
-                xml, served = vast_for(read_hand_ids, media_base, ad)
-            except Exception as e:
-                # A hand_ids.json we can't read (remote source down) or can't
-                # turn into the contract's VAST is not a verified ad either:
-                # answer "no ad" and say why in the log.
-                self.log_message("unusable hand_ids.json for ad=%s: %r", ad, e)
-                xml, served = vast.empty(), False
-            if not served:
-                self.log_message("no bridge output for ad=%s: empty VAST", ad)
-            self.send(200, xml, "application/xml; charset=utf-8")
 
     return Handler
 

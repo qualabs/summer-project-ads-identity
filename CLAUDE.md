@@ -24,6 +24,10 @@ parallel and share everything else:
 - `player/` — the demo player: reads the HAND IDs from the SVTA2053
   `EXT-X-DATERANGE` in both paths (SSAI and SGAI interstitials); `test/` has
   hand-written playlists (see its README)
+- `infra/` — the AWS side, in Terraform: the bucket and CloudFront that publish
+  `out/`, the ad server as a Lambda (`adserver/lambda_handler.py`) and the
+  MediaTailor configuration; `upload.sh` copies `out/` to the bucket (see its
+  README)
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 
