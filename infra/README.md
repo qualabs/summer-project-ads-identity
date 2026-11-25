@@ -139,8 +139,9 @@ To check on the first apply:
 
 ## Limitations and next steps
 
-- vast-2-sgai is not deployed here: the SGAI path still needs a host for it,
-  and the interstitial tag in the content playlist.
+- vast-2-sgai is not deployed here but in [vast2sgai/](vast2sgai/README.md),
+  a separate configuration with its own state. The SGAI path still needs the
+  interstitial tag in the content playlist.
 - The deployed player has no working default source: its built-in list points
   at the repo served locally. Use the `player_links` output, or `?src=`.
 - CloudFront's default domain, no custom domain or certificate.
