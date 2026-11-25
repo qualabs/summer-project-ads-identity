@@ -107,8 +107,14 @@ terraform destroy
   `source` block in `archive_file` gets no file mode, so it is a file, zipped
   with `output_file_mode = "0755"`, and `.gitattributes` keeps it LF on a
   Windows checkout.
-- **Not applied yet.** Nothing here has run on Lambda: the adapter, the layer
-  and the Function URL are unchecked.
+- **Applied once, from one machine** (25 November 2026): 8 resources, nothing
+  in `infra/` changed. Its state is on that machine; change or destroy it only
+  from there, or move the state to S3 first.
+- **On Lambda it answers as it did locally**: the asset list for `?ad=legit`
+  and `?ad=tampered` points at each ad's `index.m3u8` with `DURATION` 78.047;
+  a VAST from another host gets `403`; a request with the CloudFront origin
+  gets `Access-Control-Allow-Origin: *`. The first call after a while takes
+  about 5 s (cold start).
 - The asset list carries vast-2-sgai's own `X-AD-CREATIVE-SIGNALING` (tracking
   slots, no identifiers). The player reads the HAND IDs from the ad's playlist,
   as in the other paths (contract 3).
