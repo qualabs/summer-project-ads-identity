@@ -64,15 +64,17 @@ import { createPlayer } from "./player.js";
 // the root once infra/upload.sh published it (the bucket has no out/ level).
 const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const OUT = LOCAL ? "../out" : "..";
-// SSAI is the content stream as it is until the stitched one replaces it: the
-// break is marked by SCTE-35 and still colour bars, so no ad is found. The
-// hand-written stitched playlist is test/ssai.m3u8 (?src=test/ssai.m3u8), and
-// the hand-written interstitial is test/sgai.m3u8 (?src=test/sgai.m3u8).
+// The stream MediaTailor stitched has a URL only the deployment knows:
+// infra/upload.sh writes it in streams.json, next to this page. Without that
+// file there is no SSAI button. The hand-written stitched playlist is
+// test/ssai.m3u8 (?src=test/ssai.m3u8), and the hand-written interstitial is
+// test/sgai.m3u8 (?src=test/sgai.m3u8).
+const streams = await fetch("./streams.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 const SOURCES = [
   // sgai/make_sgai.py: the content playlist plus an interstitial (vast-2-sgai)
   ["SGAI · legit", `${OUT}/sgai/legit.m3u8`],
   ["SGAI · tampered", `${OUT}/sgai/tampered.m3u8`],
-  ["SSAI · content, ad not stitched yet", `${OUT}/content/index.m3u8`],
+  ...(streams.ssai ? [["SSAI · MediaTailor", streams.ssai]] : []),
   ["Packaged ad · legit", `${OUT}/ad/legit/index.m3u8`],
   ["Packaged ad · tampered", `${OUT}/ad/tampered/index.m3u8`],
 ];

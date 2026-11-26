@@ -65,6 +65,19 @@ echo "player          player -> s3://$bucket/player"
 sync "$root/player" player "*.html" "text/html; charset=utf-8" --exclude "test/*"
 sync "$root/player" player "*.js" "text/javascript; charset=utf-8" --exclude "test/*"
 
+# Where the stream MediaTailor stitched is: the player's SSAI button. Written
+# in player/ too (git-ignored), so the player served locally has the button.
+ssai="$(terraform -chdir="$infra" output -raw ssai_url 2>/dev/null || true)"
+if [ -n "$ssai" ]; then
+  printf '{"ssai": "%s"}\n' "$ssai" > "$root/player/streams.json"
+  aws s3 cp "$root/player/streams.json" "s3://$bucket/player/streams.json" --only-show-errors \
+    --content-type "application/json"
+else
+  echo "no ssai_url (MediaTailor is off): the player gets no SSAI button" >&2
+  rm -f "$root/player/streams.json"
+  aws s3 rm "s3://$bucket/player/streams.json" --only-show-errors
+fi
+
 # The player's hand-written test playlists. Their segments are synthetic and
 # keep the path the playlists point to (../../out/test-media/).
 echo "test playlists  player/test -> s3://$bucket/player/test"

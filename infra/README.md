@@ -22,7 +22,8 @@ What goes where in the bucket:
 content/   out/content     index.m3u8, media.m3u8, seg_*.ts
 ad/        out/ad          legit/, tampered/, default/  (ad.mp4, index.m3u8, seg_*.ts)
 bridge/    out/bridge      hand_ids.json, legit/hand_ids.json, tampered/hand_ids.json
-player/    player/         index.html, player.js, svta2053.js, test/ (playlists)
+player/    player/         index.html, player.js, svta2053.js, test/ (playlists),
+                           streams.json (written by upload.sh: the ssai_url output)
 out/test-media/  out/test-media  content/seg_*.ts, ad/seg_*.ts (synthetic)
 sgai/      out/sgai        legit.m3u8, tampered.m3u8 (segments: ../content/)
 ids.json   ids.json
@@ -157,9 +158,11 @@ Terraform.
 - vast-2-sgai is not deployed here but in [vast2sgai/](vast2sgai/README.md),
   a separate configuration with its own state. The SGAI playlists
   ([sgai/](../sgai/README.md)) point at it, so they are written with its URL.
-- The player's built-in list covers the SGAI path, the content stream and the
-  packaged ad. The test playlists are reached by `?src=` (see the player's
-  README); for the stream MediaTailor stitched, use the `player_links` output.
+- The player's built-in list covers the SGAI path, the stream MediaTailor
+  stitched and the packaged ad. `upload.sh` gives it the stitched stream's URL
+  in `player/streams.json`. The test playlists and the content stream as it
+  is are reached by `?src=` (see the player's README) or the `player_links`
+  output.
 - CloudFront's default domain, no custom domain or certificate.
 - No remote C2PA manifest yet (contract 4). It would be published next to the
   ad, under `ad/<name>/`.

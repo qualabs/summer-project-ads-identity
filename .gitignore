@@ -153,3 +153,6 @@ __pycache__/
 
 # Local media (signed mezzanines, manifests)
 media_src/
+
+# Written by infra/upload.sh: the stitched stream's URL, for the player
+player/streams.json
