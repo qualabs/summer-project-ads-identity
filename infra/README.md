@@ -12,7 +12,7 @@ Terraform, with local state. Nothing here uploads media: `upload.sh` does.
 
 | File | What | Why |
 |---|---|---|
-| `storage.tf` | One private S3 bucket and one CloudFront distribution in front of it | Publishes `content/`, `ad/`, `player/` and `ids.json` over HTTPS with `Access-Control-Allow-Origin: *`. `bridge/` is in the same bucket but CloudFront may not read it |
+| `storage.tf` | One private S3 bucket and one CloudFront distribution in front of it | Publishes `content/`, `ad/`, `player/`, `sgai/` and `ids.json` over HTTPS with `Access-Control-Allow-Origin: *`. `bridge/` is in the same bucket but CloudFront may not read it |
 | `adserver.tf` | The ad server as a Lambda (`adserver/lambda_handler.py`) with a public Function URL | The `GET /vast` both paths call. It reads `s3://<bucket>/bridge` and points the `MediaFile`s at `<CloudFront>/ad` |
 | `mediatailor.tf` | A MediaTailor playback configuration: origin = the content stream, ADS = the ad server | The SSAI path. Off with `enable_mediatailor = false` |
 
@@ -24,6 +24,7 @@ ad/        out/ad          legit/, tampered/, default/  (ad.mp4, index.m3u8, seg
 bridge/    out/bridge      hand_ids.json, legit/hand_ids.json, tampered/hand_ids.json
 player/    player/         index.html, player.js, svta2053.js, test/ (playlists)
 out/test-media/  out/test-media  content/seg_*.ts, ad/seg_*.ts (synthetic)
+sgai/      out/sgai        legit.m3u8, tampered.m3u8 (segments: ../content/)
 ids.json   ids.json
 ```
 
@@ -37,7 +38,7 @@ The player's test playlists point to `../../out/test-media/`, so their
 synthetic segments keep that path in the bucket. Write them with
 `python3 player/test/make_test_media.py` before `upload.sh`.
 
-**Everything under `content/`, `ad/`, `player/` and `out/test-media/` is public** to anyone with
+**Everything under `content/`, `ad/`, `player/`, `sgai/` and `out/test-media/` is public** to anyone with
 the URL. Check that the ad may be published before running `upload.sh`.
 
 ## Run it
@@ -58,6 +59,7 @@ Then write `out/` and copy it:
 python3 ad-packaging/package_ad.py media_src/signed_ad.mp4
 python3 content/make_stream.py media_src/tears_of_steel_720p.mov
 python3 player/test/make_test_media.py
+python3 sgai/make_sgai.py out/content/media.m3u8 \n  --vast2sgai "$(terraform -chdir=infra/vast2sgai output -raw url)" \n  --vast "$(terraform -chdir=infra output -raw vast_url)"
 infra/upload.sh
 ```
 
@@ -146,10 +148,10 @@ To check on the first apply:
 ## Limitations and next steps
 
 - vast-2-sgai is not deployed here but in [vast2sgai/](vast2sgai/README.md),
-  a separate configuration with its own state. The SGAI path still needs the
-  interstitial tag in the content playlist.
-- The player's built-in list covers the test playlists, the content stream
-  and the packaged ad. For the stream MediaTailor stitched, use the
+  a separate configuration with its own state. The SGAI playlists
+  ([sgai/](../sgai/README.md)) point at it, so they are written with its URL.
+- The player's built-in list covers the SGAI path, the test playlists, the
+  content stream and the packaged ad. For the stream MediaTailor stitched, use the
   `player_links` output, or `?src=`.
 - CloudFront's default domain, no custom domain or certificate.
 - No remote C2PA manifest yet (contract 4). It would be published next to the

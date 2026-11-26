@@ -140,7 +140,7 @@ So the two paths need different things, and one marker form does not serve
 both: MediaTailor reads the SCTE-35 `EXT-X-DATERANGE` written here, while SGAI
 needs a second `EXT-X-DATERANGE` of class `com.apple.hls.interstitial` at the
 same place, pointing at vast-2-sgai. **This folder does not write that tag**:
-it is a step of the SGAI path. `content.json` and the `break-1` tag give it
+it is a step of the SGAI path, written by [`sgai/`](../sgai/README.md). `content.json` and the `break-1` tag give it
 what it needs: `START-DATE` is the break's start, and `X-RESUME-OFFSET` must be
 the break's `DURATION` so the player skips the slate. The SGAI path reads them
 from `content.json` (`breaks[].start_date` and `breaks[].duration`), so those

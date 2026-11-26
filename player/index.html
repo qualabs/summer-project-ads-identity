@@ -68,6 +68,9 @@ const OUT = LOCAL ? "../out" : "..";
 // break is marked by SCTE-35 and still colour bars, so no ad is found. The
 // hand-written stitched playlist is test/ssai.m3u8 (?src=test/ssai.m3u8).
 const SOURCES = [
+  // sgai/make_sgai.py: the content playlist plus an interstitial (vast-2-sgai)
+  ["SGAI · legit", `${OUT}/sgai/legit.m3u8`],
+  ["SGAI · tampered", `${OUT}/sgai/tampered.m3u8`],
   ["SSAI · content, ad not stitched yet", `${OUT}/content/index.m3u8`],
   ["Test · SGAI (interstitial)", "test/sgai.m3u8"],
   ["Packaged ad · legit", `${OUT}/ad/legit/index.m3u8`],
