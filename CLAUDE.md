@@ -21,6 +21,9 @@ parallel and share everything else:
 - `content/` — the content stream: `make_stream.py` packages the programme to
   HLS VOD in `out/content/`, with the ad break marked by SCTE-35 `0x34`/`0x35`
   in `EXT-X-DATERANGE` (see its README)
+- `sgai/` — the SGAI path's content playlists: `make_sgai.py` writes
+  `out/sgai/legit.m3u8` and `tampered.m3u8`, the content playlist plus an HLS
+  Interstitial at the break pointing at vast-2-sgai (see its README)
 - `player/` — the demo player: reads the HAND IDs from the SVTA2053
   `EXT-X-DATERANGE` in both paths (SSAI and SGAI interstitials); `test/` has
   hand-written playlists (see its README)

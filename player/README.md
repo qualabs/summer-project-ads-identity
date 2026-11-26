@@ -45,14 +45,20 @@ Open `http://localhost:8090/player/` and pick a source:
 
 | Source | What it tests |
 |---|---|
+| `../out/sgai/legit.m3u8` | The SGAI path ([sgai/](../sgai/README.md)): the content stream with an interstitial → vast-2-sgai → the packaged ad's playlist with the DATERANGE. The first button, so the page opens on it. Needs vast-2-sgai and the ad server reachable |
+| `../out/sgai/tampered.m3u8` | Same, with the tampered ad |
 | `../out/content/index.m3u8` | The SSAI button, for now: the content stream (`content/`), the programme with the break marked by SCTE-35 and colour bars in it. No ad stitched yet, so no HAND IDs |
-| `test/sgai.m3u8` | Content with an interstitial → `test/asset-list.json` → `test/sgai-ad.m3u8` with the DATERANGE |
 | `../out/ad/legit/index.m3u8` | The packaged ad (`ad-packaging/`), loaded on its own |
 | `../out/ad/tampered/index.m3u8` | Same ad with a changed HAND ID |
 
 Not in the list, by `?src=test/ssai.m3u8`: a hand-written stitched playlist
 (content, ad with the DATERANGE, content) that uses the `ad-id-signaling`
 CLASS. It is the only source that shows HAND IDs on the SSAI path today.
+
+Not in the list either, by `?src=test/sgai.m3u8`: content with an interstitial
+→ `test/asset-list.json` → `test/sgai-ad.m3u8` with the DATERANGE. It needs
+neither AWS nor vast-2-sgai (local asset list, synthetic segments), so it
+tells a player problem from an infra one.
 
 Deployed (see [infra/](../infra/README.md)) `out/` has no level of its own
 (`../ad/`, `../content/`): the list picks the path from the hostname.

@@ -77,6 +77,15 @@ else
   echo "no out/test-media: run player/test/make_test_media.py (the test playlists will not play)" >&2
 fi
 
+# The SGAI path's content playlists: the content playlist plus the
+# interstitial. Their segments are content/'s (../content/seg_*.ts).
+if [ -d "$root/out/sgai" ]; then
+  echo "SGAI playlists  out/sgai -> s3://$bucket/sgai"
+  sync "$root/out/sgai" sgai "*.m3u8" "application/vnd.apple.mpegurl"
+else
+  echo "no out/sgai: run sgai/make_sgai.py (nothing uploaded for it)" >&2
+fi
+
 aws s3 cp "$root/ids.json" "s3://$bucket/ids.json" --only-show-errors --content-type "application/json"
 
 echo "invalidating CloudFront $distribution"
