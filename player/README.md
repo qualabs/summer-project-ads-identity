@@ -47,9 +47,12 @@ Open `http://localhost:8090/player/` and pick a source:
 |---|---|
 | `../out/sgai/legit.m3u8` | The SGAI path ([sgai/](../sgai/README.md)): the content stream with an interstitial → vast-2-sgai → the packaged ad's playlist with the DATERANGE. The first button, so the page opens on it. Needs vast-2-sgai and the ad server reachable |
 | `../out/sgai/tampered.m3u8` | Same, with the tampered ad |
-| `../out/content/index.m3u8` | The SSAI button, for now: the content stream (`content/`), the programme with the break marked by SCTE-35 and colour bars in it. No ad stitched yet, so no HAND IDs |
+| The URL in `streams.json` | The SSAI button: the content stream with the ad stitched by MediaTailor. [infra/upload.sh](../infra/upload.sh) writes `streams.json` next to the page (`{"ssai": "<url>"}`, git-ignored); without it there is no SSAI button. The ad plays in the break, but the playlist has no DATERANGE, so no HAND IDs (see "What we found") |
 | `../out/ad/legit/index.m3u8` | The packaged ad (`ad-packaging/`), loaded on its own |
 | `../out/ad/tampered/index.m3u8` | Same ad with a changed HAND ID |
+
+The content stream as it is, colour bars in the break, is no longer in the
+list: `?src=../out/content/index.m3u8`.
 
 Not in the list, by `?src=test/ssai.m3u8`: a hand-written stitched playlist
 (content, ad with the DATERANGE, content) that uses the `ad-id-signaling`

@@ -28,8 +28,8 @@ output "vast_url" {
   value       = local.vast_url
 }
 
-# The player's built-in list does not have the stream MediaTailor stitched
-# (its URL is only known here), so each link carries its ?src=.
+# The player on a stream that is not in its built-in list, or before
+# upload.sh gave it the URL of the stitched one: each link carries its ?src=.
 output "player_links" {
   description = "The demo player on each stream."
   value = { for label, src in {
