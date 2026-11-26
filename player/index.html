@@ -60,11 +60,18 @@
 <script type="module">
 import { createPlayer } from "./player.js";
 
+// What the pipeline wrote is in out/ when the repo is served locally, and at
+// the root once infra/upload.sh published it (the bucket has no out/ level).
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+const OUT = LOCAL ? "../out" : "..";
+// SSAI is the content stream as it is until the stitched one replaces it: the
+// break is marked by SCTE-35 and still colour bars, so no ad is found. The
+// hand-written stitched playlist is test/ssai.m3u8 (?src=test/ssai.m3u8).
 const SOURCES = [
-  ["Test · SSAI (stitched)", "test/ssai.m3u8"],
+  ["SSAI · content, ad not stitched yet", `${OUT}/content/index.m3u8`],
   ["Test · SGAI (interstitial)", "test/sgai.m3u8"],
-  ["Packaged ad · legit", "../out/ad/legit/index.m3u8"],
-  ["Packaged ad · tampered", "../out/ad/tampered/index.m3u8"],
+  ["Packaged ad · legit", `${OUT}/ad/legit/index.m3u8`],
+  ["Packaged ad · tampered", `${OUT}/ad/tampered/index.m3u8`],
 ];
 const src = new URLSearchParams(location.search).get("src") || SOURCES[0][1];
 

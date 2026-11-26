@@ -28,8 +28,8 @@ output "vast_url" {
   value       = local.vast_url
 }
 
-# The deployed player has no default source that resolves (its built-in list
-# is for the repo served locally), so each link carries its ?src=.
+# The player's built-in list does not have the stream MediaTailor stitched
+# (its URL is only known here), so each link carries its ?src=.
 output "player_links" {
   description = "The demo player on each stream."
   value = { for label, src in {
