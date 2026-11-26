@@ -142,8 +142,15 @@ To check on the first apply:
 - that MediaTailor accepts the CloudFront folder as its content origin and
   acts on the break (`EXT-X-DATERANGE` in a VOD source: see
   [content/README.md](../content/README.md))
-- that MediaTailor picks the MP4 `MediaFile` and accepts the VAST without
-  `<Impression>` (see [adserver/README.md](../adserver/README.md))
+
+Checked since, on the deployed demo (see
+[adserver/README.md](../adserver/README.md)): MediaTailor acts on the break
+and calls the ad server, but refuses a VAST without `<Impression>`; with it,
+it picks the MP4 `MediaFile` and stitches the ad. Its logs
+(`MediaTailor/AdDecisionServerInteractions` in CloudWatch) say why a break
+was left unfilled. They were turned on by hand
+(`aws mediatailor configure-logs-for-playback-configuration`), not by this
+Terraform.
 
 ## Limitations and next steps
 

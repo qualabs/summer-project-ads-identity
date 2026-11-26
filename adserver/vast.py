@@ -63,6 +63,9 @@ def build(hand_ids, media):
     inline = ET.SubElement(ET.SubElement(root, "Ad", id=ad_id), "InLine")
     ET.SubElement(inline, "AdSystem").text = AD_SYSTEM
     ET.SubElement(inline, "AdTitle").text = f"HAND ID demo ad {ad_id}"
+    # Empty: the demo has nothing to track, but VAST asks for the element and
+    # MediaTailor refuses the whole answer without it.
+    ET.SubElement(inline, "Impression")
 
     creative = ET.SubElement(ET.SubElement(inline, "Creatives"), "Creative")
     ET.SubElement(creative, "UniversalAdId", idRegistry=AD_ID_REGISTRY).text = ad_id

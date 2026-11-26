@@ -91,6 +91,7 @@ from `hand_ids.json`; it never opens the video file.
     <InLine>
       <AdSystem>ads-identity-demo</AdSystem>
       <AdTitle>…</AdTitle>
+      <Impression />
       <Creatives>
         <Creative>
           <UniversalAdId idRegistry="ad-id.org">QLAB0000001H</UniversalAdId>
@@ -122,6 +123,9 @@ Agreed:
   and the HLS playlist for vast-2-sgai.
 - **ID form inside the VAST.** The resolvable URL (`https://doi.org/10.23/…`),
   same as the SCTE-35 URI UPID.
+- **An empty `<Impression>`.** The demo tracks nothing, but VAST asks for the
+  element in every `InLine` and MediaTailor refuses the whole VAST without it
+  (`ERROR_ADS_RESPONSE_PARSE`), leaving the break unfilled.
 
 To test when each path is built: that MediaTailor picks the MP4 and vast-2-sgai
 the HLS playlist. This is a check of how the tools behave, not an open
