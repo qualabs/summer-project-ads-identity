@@ -150,9 +150,9 @@ To check on the first apply:
 - vast-2-sgai is not deployed here but in [vast2sgai/](vast2sgai/README.md),
   a separate configuration with its own state. The SGAI playlists
   ([sgai/](../sgai/README.md)) point at it, so they are written with its URL.
-- The player's built-in list covers the SGAI path, the test playlists, the
-  content stream and the packaged ad. For the stream MediaTailor stitched, use the
-  `player_links` output, or `?src=`.
+- The player's built-in list covers the SGAI path, the content stream and the
+  packaged ad. The test playlists are reached by `?src=` (see the player's
+  README); for the stream MediaTailor stitched, use the `player_links` output.
 - CloudFront's default domain, no custom domain or certificate.
 - No remote C2PA manifest yet (contract 4). It would be published next to the
   ad, under `ad/<name>/`.
