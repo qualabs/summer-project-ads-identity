@@ -4,12 +4,13 @@
 #   content/   the content stream (out/content)       public
 #   ad/        the packaged ad (out/ad)               public
 #   player/    the demo player, and ids.json next to it  public
+#   out/test-media/  synthetic segments of the player's test playlists  public
 #   bridge/    the bridge's hand_ids.json files       only the ad server reads it
 
 data "aws_caller_identity" "current" {}
 
 locals {
-  public_prefixes = ["content/*", "ad/*", "player/*", "ids.json"]
+  public_prefixes = ["content/*", "ad/*", "player/*", "out/test-media/*", "ids.json"]
   media_url       = "https://${aws_cloudfront_distribution.media.domain_name}"
 }
 

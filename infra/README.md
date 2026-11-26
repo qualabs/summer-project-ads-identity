@@ -22,7 +22,8 @@ What goes where in the bucket:
 content/   out/content     index.m3u8, media.m3u8, seg_*.ts
 ad/        out/ad          legit/, tampered/, default/  (ad.mp4, index.m3u8, seg_*.ts)
 bridge/    out/bridge      hand_ids.json, legit/hand_ids.json, tampered/hand_ids.json
-player/    player/         index.html, player.js, svta2053.js
+player/    player/         index.html, player.js, svta2053.js, test/ (playlists)
+out/test-media/  out/test-media  content/seg_*.ts, ad/seg_*.ts (synthetic)
 ids.json   ids.json
 ```
 
@@ -30,9 +31,13 @@ ids.json   ids.json
 (`<name>/ad.mp4`, `<name>/index.m3u8`, `<name>/hand_ids.json`).
 
 Not uploaded: `media_src/` (the signed mezzanine never leaves the machine),
-`svta2053.json`, `ad.json`, `content.json` and the player's `test/` playlists.
+`svta2053.json`, `ad.json` and `content.json`.
 
-**Everything under `content/`, `ad/` and `player/` is public** to anyone with
+The player's test playlists point to `../../out/test-media/`, so their
+synthetic segments keep that path in the bucket. Write them with
+`python3 player/test/make_test_media.py` before `upload.sh`.
+
+**Everything under `content/`, `ad/`, `player/` and `out/test-media/` is public** to anyone with
 the URL. Check that the ad may be published before running `upload.sh`.
 
 ## Run it
@@ -52,6 +57,7 @@ Then write `out/` and copy it:
 ```bash
 python3 ad-packaging/package_ad.py media_src/signed_ad.mp4
 python3 content/make_stream.py media_src/tears_of_steel_720p.mov
+python3 player/test/make_test_media.py
 infra/upload.sh
 ```
 
@@ -142,8 +148,9 @@ To check on the first apply:
 - vast-2-sgai is not deployed here but in [vast2sgai/](vast2sgai/README.md),
   a separate configuration with its own state. The SGAI path still needs the
   interstitial tag in the content playlist.
-- The deployed player has no working default source: its built-in list points
-  at the repo served locally. Use the `player_links` output, or `?src=`.
+- The player's built-in list covers the test playlists, the content stream
+  and the packaged ad. For the stream MediaTailor stitched, use the
+  `player_links` output, or `?src=`.
 - CloudFront's default domain, no custom domain or certificate.
 - No remote C2PA manifest yet (contract 4). It would be published next to the
   ad, under `ad/<name>/`.

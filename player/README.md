@@ -45,10 +45,17 @@ Open `http://localhost:8090/player/` and pick a source:
 
 | Source | What it tests |
 |---|---|
-| `test/ssai.m3u8` | Stitched playlist: content, ad with the DATERANGE, content. Uses the `ad-id-signaling` CLASS |
+| `../out/content/index.m3u8` | The SSAI button, for now: the content stream (`content/`), the programme with the break marked by SCTE-35 and colour bars in it. No ad stitched yet, so no HAND IDs |
 | `test/sgai.m3u8` | Content with an interstitial → `test/asset-list.json` → `test/sgai-ad.m3u8` with the DATERANGE |
 | `../out/ad/legit/index.m3u8` | The packaged ad (`ad-packaging/`), loaded on its own |
 | `../out/ad/tampered/index.m3u8` | Same ad with a changed HAND ID |
+
+Not in the list, by `?src=test/ssai.m3u8`: a hand-written stitched playlist
+(content, ad with the DATERANGE, content) that uses the `ad-id-signaling`
+CLASS. It is the only source that shows HAND IDs on the SSAI path today.
+
+Deployed (see [infra/](../infra/README.md)) `out/` has no level of its own
+(`../ad/`, `../content/`): the list picks the path from the hostname.
 
 Any other playlist: `http://localhost:8090/player/?src=<url>`.
 

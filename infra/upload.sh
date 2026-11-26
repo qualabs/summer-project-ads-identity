@@ -64,6 +64,19 @@ fi
 echo "player          player -> s3://$bucket/player"
 sync "$root/player" player "*.html" "text/html; charset=utf-8" --exclude "test/*"
 sync "$root/player" player "*.js" "text/javascript; charset=utf-8" --exclude "test/*"
+
+# The player's hand-written test playlists. Their segments are synthetic and
+# keep the path the playlists point to (../../out/test-media/).
+echo "test playlists  player/test -> s3://$bucket/player/test"
+sync "$root/player/test" player/test "*.m3u8" "application/vnd.apple.mpegurl"
+sync "$root/player/test" player/test "*.json" "application/json"
+if [ -d "$root/out/test-media" ]; then
+  echo "test media      out/test-media -> s3://$bucket/out/test-media"
+  sync "$root/out/test-media" out/test-media "*.ts" "video/mp2t"
+else
+  echo "no out/test-media: run player/test/make_test_media.py (the test playlists will not play)" >&2
+fi
+
 aws s3 cp "$root/ids.json" "s3://$bucket/ids.json" --only-show-errors --content-type "application/json"
 
 echo "invalidating CloudFront $distribution"
