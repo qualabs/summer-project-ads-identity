@@ -78,5 +78,7 @@ Any other playlist: `http://localhost:8090/player/?src=<url>`.
 - hls.js turns DATERANGEs into metadata cues only if the media is attached when
   the playlist arrives: attach first, then load.
 - During an interstitial, `video.currentTime` counts from 0 (the ad's own clock).
-- Not checked yet: what MediaTailor actually writes in the stitched playlist
-  (contract 3 leaves the CLASS open for that reason).
+- The playlist MediaTailor stitches has no SVTA2053 `EXT-X-DATERANGE`: it
+  transcodes the MP4 and never reads the ad's own playlist. On the SSAI path
+  the panel stays empty until something writes that DATERANGE (contract 3
+  leaves open who does, and with which CLASS).

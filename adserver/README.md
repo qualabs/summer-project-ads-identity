@@ -12,6 +12,7 @@ One endpoint that answers "which ad goes in this break?" with a VAST, in the
 shape of contract 2 in [CONTRACTS.md](../CONTRACTS.md):
 
 - the Ad-ID in `UniversalAdId`
+- an empty `<Impression>`: nothing is tracked, but MediaTailor needs the element
 - two `MediaFile`s: the MP4 (for MediaTailor) and the HLS playlist (for vast-2-sgai)
 - the HAND IDs in `<Extension type="hand-id">`, as resolvable URLs
 
@@ -90,16 +91,27 @@ python -m unittest discover adserver
 - Changing one byte of the mezzanine makes the bridge refuse it
   (`assertion.bmffHash.mismatch`), nothing is written, and the ad server
   answers an empty VAST for that ad.
+- **MediaTailor refuses a VAST without `<Impression>`.** It asked the ad
+  server at the break, logged `ERROR_ADS_RESPONSE_PARSE` and left the break
+  unfilled. Of the variants we tried (with `<Impression>`, without
+  `Extensions`, with the MP4 `MediaFile` alone, with a `bitrate` on it) only
+  the ones with `<Impression>` were accepted; an empty element is enough.
+- With it, MediaTailor picks the MP4 `MediaFile`, ignores the HLS one and the
+  `hand-id` extension, and stitches the ad into the break (39 segments,
+  78.042 s in a 78.083 s break). The first sessions after a new ad skip it
+  (`NEW_CREATIVE`, then `TRANSCODE_IN_PROGRESS`) until MediaTailor has
+  transcoded it, about two minutes here.
+- It sends no query parameters of its own to the ad server.
 
 ## Limitations and next steps
 
 - The `MediaFile` size is fixed at 1280x720. A packaged ad of another size
   needs the constant in `server.py` changed.
-- The VAST carries exactly what contract 2 shows. VAST 4.2 also asks for an
-  `<Impression>` in every `InLine`. vast-2-sgai's parser accepts the VAST
-  without it and picks the HLS `MediaFile` (checked in the review of this
-  piece); whether MediaTailor rejects it is still to be tested.
-- Not tested yet against MediaTailor (that it picks the MP4, and which query
-  parameters it sends).
+- The MediaTailor findings above come from test VASTs served as static files
+  to a temporary playback configuration. The deployed ad server has not
+  answered MediaTailor with the new VAST yet.
+- vast-2-sgai accepted the VAST without `<Impression>` and picked the HLS
+  `MediaFile` (checked in the review of this piece). Not checked again with
+  the empty `<Impression>`.
 - `server.py` listens on localhost only. The public URL MediaTailor needs is
   the same code as a Lambda: see "Deployed" above.

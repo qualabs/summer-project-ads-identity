@@ -47,6 +47,10 @@ class Vast(unittest.TestCase):
         self.assertEqual(root.get("version"), "4.2")
         self.assertEqual(root.find("Ad").get("id"), "QLAB0000001H")
         self.assertEqual(root.findtext("Ad/InLine/AdSystem"), "ads-identity-demo")
+        # Empty, and before Creatives, the order VAST gives the InLine.
+        inline = [child.tag for child in root.find("Ad/InLine")]
+        self.assertEqual(root.findtext("Ad/InLine/Impression"), "")
+        self.assertLess(inline.index("Impression"), inline.index("Creatives"))
 
         universal = root.find("Ad/InLine/Creatives/Creative/UniversalAdId")
         self.assertEqual((universal.get("idRegistry"), universal.text), ("ad-id.org", "QLAB0000001H"))
