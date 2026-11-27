@@ -1,6 +1,7 @@
-# Every piece's unit tests, on every pull request and on main. plan.yml and
-# deploy.yml run only the ad server's, and only when what gets deployed
-# changes; the other pieces' tests ran nowhere but on our machines.
+# Every piece's unit tests, on every pull request and on pushes to main and
+# dev. plan.yml and deploy.yml run only the ad server's, and only when what
+# gets deployed changes; the other pieces' tests ran nowhere but on our
+# machines.
 name: Tests
 
 on:
@@ -8,7 +9,7 @@ on:
     paths-ignore:
       - "**/*.md"
   push:
-    branches: [main]
+    branches: [main, dev]
     paths-ignore:
       - "**/*.md"
 
