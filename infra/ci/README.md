@@ -70,11 +70,14 @@ terraform import aws_iam_openid_connect_provider.github \
 ## What we found
 
 - `terraform validate` passes (Terraform 1.17.2).
-- **Not applied yet**, so nothing below the syntax is confirmed: that the
-  account lets us create the OIDC provider, that the deploy role's policy is
-  enough for an apply of `infra/`, and that `ReadOnlyAccess` is enough for its
-  plan.
-- When this was written the account had no OIDC provider for GitHub.
+- **Applied** (27 November 2026): the OIDC provider and the two roles, 5
+  resources. The account had no OIDC provider for GitHub before.
+- **The plan role works**: `plan.yml` ran on the pull request that added it,
+  assumed `ads-identity-ci-plan` and planned `infra/` with "No changes". So
+  `ReadOnlyAccess` is enough for the plan, and the runner (Linux) builds the
+  same ad server zip as our machines.
+- **The deploy role has not been used yet.** Whether its policy is enough for
+  an apply of `infra/` shows on the first merge to main.
 - **The `sub` is not `repo:<owner>/<name>:…` here.** The repository has
   immutable subjects on, so GitHub sends
   `repo:<owner>@<owner id>/<name>@<repository id>:…`. A role that expected the

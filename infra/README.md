@@ -152,8 +152,9 @@ terraform destroy
 
 ## What we found
 
-- **The deploy workflows have not run yet**, and the roles of `ci/` are not
-  applied. `upload.sh` was run against stand-ins for `aws` and `terraform`
+- **`plan.yml` ran** on its own pull request: "No changes", as a comment
+  there. **`deploy.yml` has not run yet**: it does on the first merge to main.
+  `upload.sh` was run against stand-ins for `aws` and `terraform`
   that only record their calls: `code`, with no `out/`, touches `player/` and
   `ids.json` and nothing under `content/`, `ad/`, `bridge/`, `sgai/` or
   `out/`; with no argument it makes the same calls as before the split.
