@@ -12,7 +12,8 @@ used before no longer resolves, so we run our own.
 
 ## What it creates
 
-A separate Terraform configuration, with its own local state. It does not
+A separate Terraform configuration, with its own state (in S3, next to
+`infra/`'s: `s3://ads-identity-tfstate/vast2sgai/terraform.tfstate`). It does not
 touch what `infra/` created, and it can be applied and destroyed on its own.
 
 | Resource | Why |
@@ -89,10 +90,8 @@ terraform destroy
 - **A zip, not a container image.** Its dependencies are all JavaScript. The
   `Dockerfile` installs system libraries for `canvas`, but nothing in
   `package.json` or `src/` uses it.
-- **Its own state.** `infra/`'s state is on the machine of whoever applied it.
-  A separate configuration can be applied from another machine without
-  recreating the bucket, CloudFront or the ad server. To merge them later,
-  move both states to S3 first.
+- **Its own state.** Same bucket as `infra/`'s, another key: applying one
+  never touches the other's resources.
 
 ## What we found
 
@@ -108,8 +107,10 @@ terraform destroy
   with `output_file_mode = "0755"`, and `.gitattributes` keeps it LF on a
   Windows checkout.
 - **Applied once, from one machine** (25 November 2026): 8 resources, nothing
-  in `infra/` changed. Its state is on that machine; change or destroy it only
-  from there, or move the state to S3 first.
+  in `infra/` changed.
+- **State moved to S3** (27 November 2026) with `terraform init
+  -migrate-state`; `terraform plan` afterwards: "No changes", 12 resources in
+  the state.
 - **On Lambda it answers as it did locally**: the asset list for `?ad=legit`
   and `?ad=tampered` points at each ad's `index.m3u8` with `DURATION` 78.047;
   a VAST from another host gets `403`; a request with the CloudFront origin

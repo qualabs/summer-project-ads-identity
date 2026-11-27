@@ -31,7 +31,7 @@ parallel and share everything else:
   `out/`, the ad server as a Lambda (`adserver/lambda_handler.py`) and the
   MediaTailor configuration; `upload.sh` copies `out/` to the bucket (see its
   README). `infra/vast2sgai/` deploys vast-2-sgai as a Lambda, with its own
-  Terraform state (see its README)
+  Terraform state. Both states are in S3 (see `infra/README.md`)
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 

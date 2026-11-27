@@ -8,7 +8,8 @@ can all of it be created and removed with one command?
 
 ## What it creates
 
-Terraform, with local state. Nothing here uploads media: `upload.sh` does.
+Terraform, with its state in S3 ("State in S3" below). Nothing here uploads
+media: `upload.sh` does.
 
 | File | What | Why |
 |---|---|---|
@@ -115,9 +116,13 @@ terraform destroy
 - **`bridge/` is private.** Only the Lambda's role reads it. It has no
   `s3:ListBucket`, so a missing `hand_ids.json` comes back as `AccessDenied`,
   which the ad server already reads as "no such ad".
-- **State is local** and git-ignored. Two people applying from two machines
-  would create two copies: agree on who applies, or move the state to S3
-  first.
+- **State in S3**: `s3://ads-identity-tfstate/infra/terraform.tfstate`. The
+  bucket is created by hand, outside Terraform, so no apply or destroy here can
+  remove it; it is private, versioned and encrypted. `use_lockfile` locks the
+  state in the same bucket while an apply runs (Terraform 1.10 or later).
+  Everyone who applies, and CI, starts from the same state. A local state is
+  moved with `terraform init -migrate-state`; `terraform plan` must then say
+  "No changes".
 
 ## What we found
 
