@@ -11,13 +11,24 @@ variable "name" {
 }
 
 variable "repository" {
-  description = "The GitHub repository whose workflows may assume the roles, as owner/name."
+  description = "The GitHub repository whose workflows assume the roles, as owner/name. Only for the roles' descriptions: what AWS checks is subject_prefix."
   type        = string
   default     = "qualabs/summer-project-ads-identity"
 
   validation {
     condition     = can(regex("^[^/]+/[^/]+$", var.repository))
     error_message = "owner/name, as in the repository's URL."
+  }
+}
+
+variable "subject_prefix" {
+  description = "How GitHub names this repository in the `sub` of its OIDC tokens. Read it with `gh api repos/<owner>/<name>/actions/oidc/customization/sub` (sub_claim_prefix). With immutable subjects it carries the owner's and the repository's ids, so a repository that takes over the name later does not match."
+  type        = string
+  default     = "repo:qualabs@29763741/summer-project-ads-identity@1455285815"
+
+  validation {
+    condition     = startswith(var.subject_prefix, "repo:")
+    error_message = "The sub_claim_prefix as GitHub prints it: it starts with repo:."
   }
 }
 

@@ -23,8 +23,8 @@ resource "aws_iam_openid_connect_provider" "github" {
 # given `sub` (what GitHub says the run is: a pull request, or a ref).
 data "aws_iam_policy_document" "assume" {
   for_each = {
-    plan   = "repo:${var.repository}:pull_request"
-    deploy = "repo:${var.repository}:ref:refs/heads/main"
+    plan   = "${var.subject_prefix}:pull_request"
+    deploy = "${var.subject_prefix}:ref:refs/heads/main"
   }
 
   statement {

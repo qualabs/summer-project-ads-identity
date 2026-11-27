@@ -75,3 +75,8 @@ terraform import aws_iam_openid_connect_provider.github \
   enough for an apply of `infra/`, and that `ReadOnlyAccess` is enough for its
   plan.
 - When this was written the account had no OIDC provider for GitHub.
+- **The `sub` is not `repo:<owner>/<name>:…` here.** The repository has
+  immutable subjects on, so GitHub sends
+  `repo:<owner>@<owner id>/<name>@<repository id>:…`. A role that expected the
+  plain form answered `Not authorized to perform
+  sts:AssumeRoleWithWebIdentity`. The prefix is the `subject_prefix` variable.
