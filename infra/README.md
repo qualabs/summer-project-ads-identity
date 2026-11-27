@@ -45,7 +45,7 @@ the URL. Check that the ad may be published before running `upload.sh`.
 
 ## Run it
 
-Needs [Terraform](https://developer.hashicorp.com/terraform/install) 1.5+, the
+Needs [Terraform](https://developer.hashicorp.com/terraform/install) 1.10+, the
 AWS CLI and credentials for an account where you may create S3, CloudFront,
 Lambda, IAM, CloudFormation and MediaTailor resources.
 
@@ -153,14 +153,18 @@ terraform destroy
 ## What we found
 
 - **`plan.yml` ran** on its own pull request: "No changes", as a comment
-  there. **`deploy.yml` has not run yet**: it does on the first merge to main.
+  there. **`deploy.yml` ran** on the merge of that pull request: `apply` with
+  no changes, the player uploaded, CloudFront invalidated, and `content/`,
+  `ad/`, `bridge/`, `sgai/` and `out/test-media/` in the bucket as they were.
+  **Not tested yet:** a merge that changes infrastructure, so the deploy
+  role's write permissions are unproven.
   `upload.sh` was run against stand-ins for `aws` and `terraform`
   that only record their calls: `code`, with no `out/`, touches `player/` and
   `ids.json` and nothing under `content/`, `ad/`, `bridge/`, `sgai/` or
   `out/`; with no argument it makes the same calls as before the split.
 - `terraform validate` passes (Terraform 1.17.2, `aws` provider 6.74.0).
-- **Not applied yet.** `terraform plan` and `apply` have not run against an
-  account, so nothing below the syntax is confirmed.
+- **Applied.** The demo is deployed; `terraform plan` says "No changes" from
+  a machine and from the workflow.
 - **`PowerUserAccess` is not enough to apply.** That role has no IAM access,
   and the Lambda needs an execution role: `apply` would create the bucket and
   CloudFront and then fail at `iam:CreateRole`. Whoever applies needs, on
