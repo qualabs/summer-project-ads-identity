@@ -1,0 +1,4 @@
+# infra/adserver.tf zips these files for the Lambda and its hash decides
+# whether to update it: LF on every checkout, so Windows, macOS and CI build
+# the same zip.
+*.py text eol=lf
