@@ -156,3 +156,6 @@ media_src/
 
 # Written by infra/upload.sh: the stitched stream's URL, for the player
 player/streams.json
+
+# macOS
+.DS_Store
