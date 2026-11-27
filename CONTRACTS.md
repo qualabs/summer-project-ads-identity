@@ -8,14 +8,14 @@ building its own copy.
 
 All four are **Frozen**: agreed by both path owners. A change needs both to
 agree and is made in the same commit as the code that changes it. Contracts 1
-and 3 describe what the code already does; 2 and 4 are agreed designs that are
-not built yet.
+to 3 describe what the code already does; 4 is an agreed design that is not
+built yet.
 
 | # | Contract | Written by | Read by | Status |
 |---|----------|------------|---------|--------|
 | 1 | Bridge output | `pipeline/bridge.py` | ad server, ad packaging | Frozen (matches the code) |
-| 2 | VAST | ad server | MediaTailor, vast-2-sgai | Frozen (agreed, not built yet) |
-| 3 | Playlist signal | ad packaging (SGAI), MediaTailor or post-stitch fix-up (SSAI) | player | Frozen (matches the code) |
+| 2 | VAST | ad server | MediaTailor, vast-2-sgai | Frozen (matches the code) |
+| 3 | Playlist signal | ad packaging (SGAI), post-stitch fix-up (SSAI) | player | Frozen (matches the code in SGAI; the SSAI fix-up is not built) |
 | 4 | Signature proof | ad packaging | player | Frozen (agreed, not built yet) |
 
 The HAND IDs in the examples are placeholders (`10.23/AAAA-…`). Real IDs come
@@ -127,9 +127,8 @@ Agreed:
   element in every `InLine` and MediaTailor refuses the whole VAST without it
   (`ERROR_ADS_RESPONSE_PARSE`), leaving the break unfilled.
 
-To test when each path is built: that MediaTailor picks the MP4 and vast-2-sgai
-the HLS playlist. This is a check of how the tools behave, not an open
-decision.
+Checked on the deployed demo: MediaTailor picks the MP4 and vast-2-sgai the
+HLS playlist ([adserver/README.md](adserver/README.md)).
 
 ## 3. Playlist signal
 
@@ -158,8 +157,9 @@ Rules:
 
 - **Who writes it.** SGAI: the ad's own playlist, written once when the ad is
   packaged; `START-DATE` is that playlist's first `EXT-X-PROGRAM-DATE-TIME`.
-  SSAI: MediaTailor if it can carry our identifiers, otherwise a fix-up of ours
-  after stitching; `START-DATE` is where the ad landed.
+  SSAI: a fix-up of ours after stitching, since MediaTailor does not carry it
+  (it transcodes the MP4 and never reads the ad's playlist); `START-DATE` is
+  where the ad landed.
 - `ID` is unique within the playlist. It is not the Ad-ID (that is inside the
   payload).
 - `EXT-X-PROGRAM-DATE-TIME` is required, also in VOD.
