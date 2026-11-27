@@ -1,5 +1,15 @@
 terraform {
-  required_version = ">= 1.5"
+  required_version = ">= 1.10" # use_lockfile in the S3 backend
+
+  # State in S3, shared by everyone who applies and by CI (infra/README.md).
+  # The bucket is created by hand, outside Terraform.
+  backend "s3" {
+    bucket       = "ads-identity-tfstate"
+    key          = "infra/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 
   required_providers {
     aws = {
