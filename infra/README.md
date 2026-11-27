@@ -71,6 +71,32 @@ is removed from the bucket: if the bridge refuses the mezzanine, its
 `hand_ids.json` disappears locally and, after `upload.sh`, the deployed ad
 server answers an empty VAST.
 
+`upload.sh media` uploads only what is in `out/`, and `upload.sh code` only
+what is in the repository (the player, its test playlists and `ids.json`).
+
+## Deploy on merge
+
+A merge to main deploys what the repository holds, with GitHub Actions:
+
+| Workflow | When | What |
+|---|---|---|
+| `.github/workflows/plan.yml` | A pull request that touches `infra/`, `adserver/`, `player/`, `ids.json` or the workflows | The ad server's tests, `terraform fmt -check`, `validate` and `plan` of `infra/`. The plan is a comment in the pull request. Changes nothing |
+| `.github/workflows/deploy.yml` | A push to main that touches `infra/` (not `ci/`, `vast2sgai/` or a README), `adserver/`, `player/` or `ids.json`; or by hand (Actions → Deploy → Run workflow) | The ad server's tests, `terraform apply` of `infra/` (the infrastructure and the ad server Lambda), `upload.sh code`, CloudFront invalidation |
+
+They reach the account through the roles of [`ci/`](ci/README.md), with no
+stored keys.
+
+Still manual, from the machine that has the mezzanine and `out/`:
+
+- **The media**: `infra/upload.sh media` after the pipeline wrote `out/`
+  (`content/`, `ad/`, `bridge/`, `sgai/`, `out/test-media/`). The workflow never
+  runs that part: a runner has no `out/`, and syncing an empty `out/` would
+  remove `bridge/`, so no ad would be served.
+- **`infra/vast2sgai/`** and **`infra/ci/`**: `terraform apply` in each.
+- **Variables.** The workflow applies with the defaults of `variables.tf`. A
+  `terraform.tfvars` on someone's machine is not seen by it: to change what is
+  deployed (e.g. `mediatailor_ad`), change the default in a pull request.
+
 The URLs are Terraform outputs (`terraform output`):
 
 | Output | What it is |
@@ -126,6 +152,11 @@ terraform destroy
 
 ## What we found
 
+- **The deploy workflows have not run yet**, and the roles of `ci/` are not
+  applied. `upload.sh` was run against stand-ins for `aws` and `terraform`
+  that only record their calls: `code`, with no `out/`, touches `player/` and
+  `ids.json` and nothing under `content/`, `ad/`, `bridge/`, `sgai/` or
+  `out/`; with no argument it makes the same calls as before the split.
 - `terraform validate` passes (Terraform 1.17.2, `aws` provider 6.74.0).
 - **Not applied yet.** `terraform plan` and `apply` have not run against an
   account, so nothing below the syntax is confirmed.

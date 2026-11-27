@@ -1,0 +1,62 @@
+# On a merge to main: apply infra/ (the infrastructure and the ad server
+# Lambda) and upload the player. The media (content/, ad/, bridge/, sgai/,
+# out/test-media/) is not in the repository and is never touched here: it
+# stays a manual `infra/upload.sh media` (infra/README.md).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - "!infra/ci/**"
+      - "!infra/vast2sgai/**"
+      - "!infra/**/*.md"
+      - "adserver/**"
+      - "player/**"
+      - "ids.json"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token AWS exchanges for the role
+
+# One deploy at a time; a second merge waits for the first.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  deploy:
+    # The role can only be assumed from main (infra/ci/).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ad server tests
+        run: python3 -m unittest discover adserver
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+          terraform_wrapper: false # upload.sh reads `terraform output -raw`
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform init
+        run: terraform -chdir=infra init -input=false
+
+      - name: terraform apply
+        run: terraform -chdir=infra apply -input=false -auto-approve
+
+      - name: Upload the player
+        run: infra/upload.sh code

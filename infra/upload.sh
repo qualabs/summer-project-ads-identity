@@ -6,15 +6,30 @@
 # Terraform created, then invalidates CloudFront. Run it after `terraform
 # apply`, and again every time out/ changes.
 #
-#   infra/upload.sh
+#   infra/upload.sh          everything (the same as `all`)
+#   infra/upload.sh media    only what the pipeline wrote in out/
+#   infra/upload.sh code     only what is in the repository: the player, its
+#                            test playlists and ids.json
 #
-# What is not in out/ is removed from the bucket too. That matters for
-# bridge/: a missing hand_ids.json means "do not serve this ad", so an ad the
-# bridge refused locally stops being served once this runs.
+# `code` is what the deploy workflow runs (.github/workflows/deploy.yml). A
+# runner has no out/, so it must never reach the media part: see below.
+#
+# In the media part, what is not in out/ is removed from the bucket too. That
+# matters for bridge/: a missing hand_ids.json means "do not serve this ad",
+# so an ad the bridge refused locally stops being served once this runs.
 #
 # Needs the AWS CLI and terraform, with the same credentials as the apply.
 
 set -euo pipefail
+
+what="${1:-all}"
+case "$what" in
+  all | code | media) ;;
+  *)
+    echo "usage: infra/upload.sh [all|code|media]" >&2
+    exit 2
+    ;;
+esac
 
 infra="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$infra")"
@@ -38,68 +53,82 @@ hls() {
   sync "$1" "$2" "*.mp4" "video/mp4"
 }
 
-if [ -d "$root/out/content" ]; then
-  echo "content stream  out/content -> s3://$bucket/content"
-  hls "$root/out/content" content
-else
-  echo "no out/content: run content/make_stream.py (nothing uploaded for it)" >&2
-fi
+# What the pipeline wrote in out/: content/, ad/, bridge/, out/test-media/ and
+# sgai/ in the bucket. Only from a machine that has out/.
+upload_media() {
+  if [ -d "$root/out/content" ]; then
+    echo "content stream  out/content -> s3://$bucket/content"
+    hls "$root/out/content" content
+  else
+    echo "no out/content: run content/make_stream.py (nothing uploaded for it)" >&2
+  fi
 
-if [ -d "$root/out/ad" ]; then
-  echo "packaged ad     out/ad -> s3://$bucket/ad"
-  hls "$root/out/ad" ad
-else
-  echo "no out/ad: run ad-packaging/package_ad.py (nothing uploaded for it)" >&2
-fi
+  if [ -d "$root/out/ad" ]; then
+    echo "packaged ad     out/ad -> s3://$bucket/ad"
+    hls "$root/out/ad" ad
+  else
+    echo "no out/ad: run ad-packaging/package_ad.py (nothing uploaded for it)" >&2
+  fi
 
-# Only the hand_ids.json files: all the ad server reads.
-if [ -d "$root/out/bridge" ]; then
-  echo "bridge output   out/bridge -> s3://$bucket/bridge"
-  sync "$root/out/bridge" bridge "*hand_ids.json" "application/json"
-else
-  echo "no out/bridge: removing s3://$bucket/bridge, so no ad is served" >&2
-  aws s3 rm "s3://$bucket/bridge" --recursive --only-show-errors
-fi
+  # Only the hand_ids.json files: all the ad server reads.
+  if [ -d "$root/out/bridge" ]; then
+    echo "bridge output   out/bridge -> s3://$bucket/bridge"
+    sync "$root/out/bridge" bridge "*hand_ids.json" "application/json"
+  else
+    echo "no out/bridge: removing s3://$bucket/bridge, so no ad is served" >&2
+    aws s3 rm "s3://$bucket/bridge" --recursive --only-show-errors
+  fi
 
-echo "player          player -> s3://$bucket/player"
-sync "$root/player" player "*.html" "text/html; charset=utf-8" --exclude "test/*"
-sync "$root/player" player "*.js" "text/javascript; charset=utf-8" --exclude "test/*"
+  # The synthetic segments of the player's test playlists keep the path the
+  # playlists point to (../../out/test-media/).
+  if [ -d "$root/out/test-media" ]; then
+    echo "test media      out/test-media -> s3://$bucket/out/test-media"
+    sync "$root/out/test-media" out/test-media "*.ts" "video/mp2t"
+  else
+    echo "no out/test-media: run player/test/make_test_media.py (the test playlists will not play)" >&2
+  fi
 
-# Where the stream MediaTailor stitched is: the player's SSAI button. Written
-# in player/ too (git-ignored), so the player served locally has the button.
-ssai="$(terraform -chdir="$infra" output -raw ssai_url 2>/dev/null || true)"
-if [ -n "$ssai" ]; then
-  printf '{"ssai": "%s"}\n' "$ssai" > "$root/player/streams.json"
-  aws s3 cp "$root/player/streams.json" "s3://$bucket/player/streams.json" --only-show-errors \
-    --content-type "application/json"
-else
-  echo "no ssai_url (MediaTailor is off): the player gets no SSAI button" >&2
-  rm -f "$root/player/streams.json"
-  aws s3 rm "s3://$bucket/player/streams.json" --only-show-errors
-fi
+  # The SGAI path's content playlists: the content playlist plus the
+  # interstitial. Their segments are content/'s (../content/seg_*.ts).
+  if [ -d "$root/out/sgai" ]; then
+    echo "SGAI playlists  out/sgai -> s3://$bucket/sgai"
+    sync "$root/out/sgai" sgai "*.m3u8" "application/vnd.apple.mpegurl"
+  else
+    echo "no out/sgai: run sgai/make_sgai.py (nothing uploaded for it)" >&2
+  fi
+}
 
-# The player's hand-written test playlists. Their segments are synthetic and
-# keep the path the playlists point to (../../out/test-media/).
-echo "test playlists  player/test -> s3://$bucket/player/test"
-sync "$root/player/test" player/test "*.m3u8" "application/vnd.apple.mpegurl"
-sync "$root/player/test" player/test "*.json" "application/json"
-if [ -d "$root/out/test-media" ]; then
-  echo "test media      out/test-media -> s3://$bucket/out/test-media"
-  sync "$root/out/test-media" out/test-media "*.ts" "video/mp2t"
-else
-  echo "no out/test-media: run player/test/make_test_media.py (the test playlists will not play)" >&2
-fi
+# What is in the repository: player/ and ids.json in the bucket. Touches
+# nothing else, so it is safe where there is no out/.
+upload_code() {
+  echo "player          player -> s3://$bucket/player"
+  sync "$root/player" player "*.html" "text/html; charset=utf-8" --exclude "test/*"
+  sync "$root/player" player "*.js" "text/javascript; charset=utf-8" --exclude "test/*"
 
-# The SGAI path's content playlists: the content playlist plus the
-# interstitial. Their segments are content/'s (../content/seg_*.ts).
-if [ -d "$root/out/sgai" ]; then
-  echo "SGAI playlists  out/sgai -> s3://$bucket/sgai"
-  sync "$root/out/sgai" sgai "*.m3u8" "application/vnd.apple.mpegurl"
-else
-  echo "no out/sgai: run sgai/make_sgai.py (nothing uploaded for it)" >&2
-fi
+  # Where the stream MediaTailor stitched is: the player's SSAI button. Written
+  # in player/ too (git-ignored), so the player served locally has the button.
+  local ssai
+  ssai="$(terraform -chdir="$infra" output -raw ssai_url 2>/dev/null || true)"
+  if [ -n "$ssai" ]; then
+    printf '{"ssai": "%s"}\n' "$ssai" > "$root/player/streams.json"
+    aws s3 cp "$root/player/streams.json" "s3://$bucket/player/streams.json" --only-show-errors \
+      --content-type "application/json"
+  else
+    echo "no ssai_url (MediaTailor is off): the player gets no SSAI button" >&2
+    rm -f "$root/player/streams.json"
+    aws s3 rm "s3://$bucket/player/streams.json" --only-show-errors
+  fi
 
-aws s3 cp "$root/ids.json" "s3://$bucket/ids.json" --only-show-errors --content-type "application/json"
+  # The player's hand-written test playlists.
+  echo "test playlists  player/test -> s3://$bucket/player/test"
+  sync "$root/player/test" player/test "*.m3u8" "application/vnd.apple.mpegurl"
+  sync "$root/player/test" player/test "*.json" "application/json"
+
+  aws s3 cp "$root/ids.json" "s3://$bucket/ids.json" --only-show-errors --content-type "application/json"
+}
+
+if [ "$what" != code ]; then upload_media; fi
+if [ "$what" != media ]; then upload_code; fi
 
 echo "invalidating CloudFront $distribution"
 aws cloudfront create-invalidation --distribution-id "$distribution" --paths "/*" \
