@@ -35,7 +35,8 @@ parallel and share everything else:
   `infra/ci/` has the roles GitHub Actions assumes (see its README)
 - `.github/workflows/` — `plan.yml` shows the Terraform plan of `infra/` in a
   pull request; `deploy.yml` applies it and uploads the player on a merge to
-  main. The media is never uploaded from there (see `infra/README.md`)
+  main. The media is never uploaded from there (see `infra/README.md`).
+  `tests.yml` runs every piece's unit tests on each pull request and on main
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 
