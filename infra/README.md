@@ -148,7 +148,10 @@ terraform destroy
   state in the same bucket while an apply runs (Terraform 1.10 or later).
   Everyone who applies, and CI, starts from the same state. A local state is
   moved with `terraform init -migrate-state`; `terraform plan` must then say
-  "No changes".
+  "No changes". After that the local copies are not read any more and can be
+  deleted: `terraform.tfstate`, `terraform.tfstate.backup` and any copy made
+  by hand before migrating. They are git-ignored, and the backups hold the
+  whole previous state.
 
 ## What we found
 
