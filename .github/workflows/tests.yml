@@ -1,0 +1,51 @@
+# Every piece's unit tests, on every pull request and on pushes to main and
+# dev. plan.yml and deploy.yml run only the ad server's, and only when what
+# gets deployed changes; the other pieces' tests ran nowhere but on our
+# machines.
+name: Tests
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+  push:
+    branches: [main, dev]
+    paths-ignore:
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # threefive: the content's SCTE-35 (content/README.md). ffmpeg: the
+      # content test that encodes a few seconds of testsrc, skipped without it.
+      - name: Dependencies
+        run: |
+          python -m pip install threefive==3.1.11
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
+      - name: Ad server
+        run: python -m unittest discover adserver
+
+      - name: Ad packaging
+        run: python -m unittest discover ad-packaging
+
+      - name: Content stream
+        run: python -m unittest discover content
+
+      - name: SGAI playlists
+        run: python -m unittest discover sgai

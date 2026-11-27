@@ -102,16 +102,19 @@ python -m unittest discover adserver
   (`NEW_CREATIVE`, then `TRANSCODE_IN_PROGRESS`) until MediaTailor has
   transcoded it, about two minutes here.
 - It sends no query parameters of its own to the ad server.
+- **The deployed ad server, with the empty `<Impression>`, works with
+  MediaTailor** (27 November 2026): the stitched playlist has the ad's 39
+  segments. It has no SVTA2053 `EXT-X-DATERANGE`, since MediaTailor never
+  reads the ad's playlist (contract 3 in [CONTRACTS.md](../CONTRACTS.md)).
+- **vast-2-sgai with the empty `<Impression>`** still picks the HLS
+  `MediaFile` (78.047 s). Its asset list now carries
+  `"tracking": [{"type": "impression", "urls": [""]}]` instead of `[]`. The
+  player ignores it (it is a version 2 payload) and hls.js fires no beacons;
+  a player that does would request an empty URL.
 
 ## Limitations and next steps
 
 - The `MediaFile` size is fixed at 1280x720. A packaged ad of another size
   needs the constant in `server.py` changed.
-- The MediaTailor findings above come from test VASTs served as static files
-  to a temporary playback configuration. The deployed ad server has not
-  answered MediaTailor with the new VAST yet.
-- vast-2-sgai accepted the VAST without `<Impression>` and picked the HLS
-  `MediaFile` (checked in the review of this piece). Not checked again with
-  the empty `<Impression>`.
 - `server.py` listens on localhost only. The public URL MediaTailor needs is
   the same code as a Lambda: see "Deployed" above.

@@ -38,7 +38,7 @@ The clone's `.env` is not uploaded: its values are examples.
 
 ## Run it
 
-Needs Terraform 1.5+, Node.js and npm, and AWS credentials that may create
+Needs Terraform 1.10+, Node.js and npm, and AWS credentials that may create
 Lambda and IAM resources. No Docker.
 
 1. A clone of vast-2-sgai with its dependencies. Checked against commit
