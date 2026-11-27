@@ -1,0 +1,80 @@
+# On a pull request that touches what gets deployed: check the Terraform of
+# infra/ and show its plan in the pull request. Changes nothing on AWS: the
+# role it assumes is read-only (infra/ci/).
+name: Plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - "adserver/**"
+      - "player/**"
+      - "ids.json"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token AWS exchanges for the role
+  pull-requests: write # the comment with the plan
+
+concurrency:
+  group: plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan:
+    # A fork gets no OIDC token, so it could not assume the role.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ad server tests
+        run: python3 -m unittest discover adserver
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform init
+        run: terraform -chdir=infra init -input=false
+
+      - name: terraform validate
+        run: terraform -chdir=infra validate
+
+      # -lock=false: the role cannot write the lock file, and a plan that is
+      # only shown does not need it.
+      - name: terraform plan
+        run: |
+          set -o pipefail
+          terraform -chdir=infra plan -input=false -lock=false -no-color | tee plan.txt
+
+      - name: Show the plan in the pull request
+        if: always() && hashFiles('plan.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo '### Terraform plan of `infra/`'
+            echo
+            echo '```'
+            # GitHub limits a comment to 65536 characters: the end is the summary.
+            grep -v 'Refreshing state\.\.\.\|: Reading\.\.\.\|: Read complete' plan.txt | tail -c 60000
+            echo '```'
+          } > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "$PR" --body-file comment.md --edit-last --create-if-none

@@ -31,7 +31,11 @@ parallel and share everything else:
   `out/`, the ad server as a Lambda (`adserver/lambda_handler.py`) and the
   MediaTailor configuration; `upload.sh` copies `out/` to the bucket (see its
   README). `infra/vast2sgai/` deploys vast-2-sgai as a Lambda, with its own
-  Terraform state. Both states are in S3 (see `infra/README.md`)
+  Terraform state. Both states are in S3 (see `infra/README.md`).
+  `infra/ci/` has the roles GitHub Actions assumes (see its README)
+- `.github/workflows/` — `plan.yml` shows the Terraform plan of `infra/` in a
+  pull request; `deploy.yml` applies it and uploads the player on a merge to
+  main. The media is never uploaded from there (see `infra/README.md`)
 - `ids.json` — only what is not in the C2PA manifest (test Ad-ID, SVTA2053 schemes)
 - `media_src/`, `out/` — local only, never committed
 
